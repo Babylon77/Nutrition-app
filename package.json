@@ -1,0 +1,33 @@
+{
+  "name": "nutrition-app",
+  "version": "1.0.0",
+  "description": "AI-powered nutrition tracking and bloodwork analysis application",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm start",
+    "dev:backend": "cd backend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "test:frontend": "cd frontend && npm test",
+    "test:backend": "cd backend && npm test",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "start": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:down": "docker-compose down"
+  },
+  "keywords": [
+    "nutrition",
+    "health",
+    "ai",
+    "bloodwork",
+    "tracking",
+    "react",
+    "nodejs",
+    "mongodb"
+  ],
+  "author": "Nutrition App Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+} 
