@@ -208,6 +208,21 @@ For issues or questions:
 - MongoDB for flexible data storage
 - The nutrition science community for BMR formulas and guidelines
 
+## 🚀 Deployment
+
+This app is configured for easy deployment on **Render**. See the detailed [Deployment Guide](./DEPLOYMENT.md) for step-by-step instructions.
+
+### Quick Deploy to Render
+
+1. Fork this repository
+2. Connect to Render
+3. Set environment variables
+4. Deploy!
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete instructions.
+
+## 📱 Development
+
 ---
 
 **Note**: This is an MVP (Minimum Viable Product) for user testing and feedback. Features and functionality will continue to evolve based on user needs and feedback. 

@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: nutrition-app
+    runtime: node
+    plan: free
+    buildCommand: npm run build:all
+    startCommand: npm run start:production
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+    autoDeploy: false 

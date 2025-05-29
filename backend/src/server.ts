@@ -36,7 +36,7 @@ const limiter = rateLimit({
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-domain.com'] 
+    ? true  // Allow all origins in production for Render
     : ['http://localhost:3000'],
   credentials: true,
 }));
@@ -49,12 +49,24 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Serve static files from React build in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../../frontend/build')));
+}
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/food', foodRoutes);
 app.use('/api/bloodwork', bloodworkRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/health', healthRoutes);
+
+// Serve React app for all non-API routes in production
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../frontend/build/index.html'));
+  });
+}
 
 // Error handling middleware
 app.use(notFound);
