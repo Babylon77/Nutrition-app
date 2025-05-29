@@ -15,6 +15,8 @@ const registerSchema = Joi.object({
   gender: Joi.string().valid('male', 'female', 'other').optional(),
   height: Joi.number().min(50).max(300).optional(),
   weight: Joi.number().min(20).max(500).optional(),
+  weightGoal: Joi.number().min(50).max(1000).optional(),
+  weightGoalTimeframe: Joi.number().min(1).max(52).optional(),
   activityLevel: Joi.string().valid('sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extra_active').optional(),
   healthGoals: Joi.array().items(Joi.string()).optional(),
   allergies: Joi.array().items(Joi.string()).optional(),

@@ -37,6 +37,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       gender: backendUser.gender,
       height: backendUser.height,
       weight: backendUser.weight,
+      weightGoal: backendUser.weightGoal,
+      weightGoalTimeframe: backendUser.weightGoalTimeframe,
       activityLevel: backendUser.activityLevel,
       healthGoals: backendUser.healthGoals,
       allergies: backendUser.allergies,
