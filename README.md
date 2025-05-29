@@ -2,6 +2,8 @@
 
 A comprehensive nutrition tracking and analysis application with AI-powered insights, built with React and Node.js.
 
+🚀 **Status**: Deployed to Render (pending MongoDB Atlas network access configuration)
+
 ## 🚀 Features
 
 ### Core Functionality
