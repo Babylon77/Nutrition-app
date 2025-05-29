@@ -130,8 +130,10 @@ export interface RegisterData {
   lastName: string;
   dateOfBirth?: Date;
   gender?: 'male' | 'female' | 'other';
-  height?: number;
-  weight?: number;
+  height?: number; // Stored in cm (backend), but UI should handle feet/inches conversion
+  weight?: number; // Stored in kg (backend), but UI should handle lbs conversion
+  weightGoal?: number; // Target weight in pounds (US units)
+  weightGoalTimeframe?: number; // Timeframe in weeks
   activityLevel?: 'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active' | 'extra_active';
   healthGoals?: string[];
   allergies?: string[];

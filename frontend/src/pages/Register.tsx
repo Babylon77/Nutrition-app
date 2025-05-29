@@ -22,6 +22,12 @@ import { Restaurant as RestaurantIcon } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { RegisterData } from '../types';
 
+interface RegisterFormData extends Omit<RegisterData, 'height' | 'weight'> {
+  heightFeet?: number;
+  heightInches?: number;
+  weight?: number; // pounds instead of kg for form
+}
+
 const activityLevels = [
   { value: 'sedentary', label: 'Sedentary (little or no exercise)' },
   { value: 'lightly_active', label: 'Lightly Active (light exercise 1-3 days/week)' },
@@ -36,10 +42,10 @@ const healthGoalOptions = [
   'Muscle Building',
   'Improved Energy',
   'Better Sleep',
+  'Reduced Inflammation',
   'Heart Health',
   'Blood Sugar Control',
   'Digestive Health',
-  'Athletic Performance',
   'General Wellness',
 ];
 
@@ -65,8 +71,7 @@ const dietaryRestrictionOptions = [
   'Low-Carb',
   'Low-Fat',
   'Mediterranean',
-  'Halal',
-  'Kosher',
+  'Intermittent Fasting',
 ];
 
 export const Register: React.FC = () => {
@@ -80,7 +85,7 @@ export const Register: React.FC = () => {
     control,
     formState: { errors },
     watch,
-  } = useForm<RegisterData>();
+  } = useForm<RegisterFormData>();
 
   const password = watch('password');
 
@@ -88,12 +93,43 @@ export const Register: React.FC = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const onSubmit = async (data: RegisterData) => {
+  // Helper functions to convert between US and metric units
+  const convertFeetInchesToCm = (feet?: number, inches?: number) => {
+    if (!feet && !inches) return undefined;
+    const totalInches = (feet || 0) * 12 + (inches || 0);
+    return totalInches * 2.54;
+  };
+
+  const convertLbsToKg = (lbs?: number) => {
+    if (!lbs) return undefined;
+    return lbs / 2.20462;
+  };
+
+  const onSubmit = async (data: RegisterFormData) => {
     try {
       setError('');
       setLoading(true);
       
-      await registerUser(data);
+      // Convert US units to metric for backend storage
+      const heightInCm = convertFeetInchesToCm(data.heightFeet, data.heightInches);
+      const weightInKg = convertLbsToKg(data.weight);
+      
+      // Prepare data for backend (convert US units to metric)
+      const { heightFeet, heightInches, ...baseData } = data;
+      const registerData: RegisterData = {
+        ...baseData,
+        height: heightInCm,
+        weight: weightInKg,
+      };
+      
+      // Remove undefined values
+      Object.keys(registerData).forEach(key => {
+        if (registerData[key as keyof RegisterData] === undefined) {
+          delete registerData[key as keyof RegisterData];
+        }
+      });
+      
+      await registerUser(registerData);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -278,31 +314,74 @@ export const Register: React.FC = () => {
               <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                 <TextField
                   fullWidth
-                  id="height"
-                  label="Height (cm)"
+                  id="heightFeet"
+                  label="Height (feet)"
                   type="number"
-                  {...register('height', {
+                  {...register('heightFeet', {
                     valueAsNumber: true,
-                    min: { value: 100, message: 'Height must be at least 100cm' },
-                    max: { value: 250, message: 'Height must be less than 250cm' },
+                    min: { value: 4, message: 'Height must be at least 4 feet' },
+                    max: { value: 8, message: 'Height must be less than 8 feet' },
                   })}
-                  error={!!errors.height}
-                  helperText={errors.height?.message}
+                  error={!!errors.heightFeet}
+                  helperText={errors.heightFeet?.message}
                 />
                 <TextField
                   fullWidth
+                  id="heightInches"
+                  label="Height (inches)"
+                  type="number"
+                  {...register('heightInches', {
+                    valueAsNumber: true,
+                    min: { value: 0, message: 'Height must be at least 0 inches' },
+                    max: { value: 11, message: 'Height must be less than 12 inches' },
+                  })}
+                  error={!!errors.heightInches}
+                  helperText={errors.heightInches?.message}
+                />
+              </Box>
+              
+              <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                <TextField
+                  fullWidth
                   id="weight"
-                  label="Weight (kg)"
+                  label="Weight (pounds)"
                   type="number"
                   {...register('weight', {
                     valueAsNumber: true,
-                    min: { value: 30, message: 'Weight must be at least 30kg' },
-                    max: { value: 300, message: 'Weight must be less than 300kg' },
+                    min: { value: 50, message: 'Weight must be at least 50 pounds' },
+                    max: { value: 500, message: 'Weight must be less than 500 pounds' },
                   })}
                   error={!!errors.weight}
                   helperText={errors.weight?.message}
                 />
+                <TextField
+                  fullWidth
+                  id="weightGoal"
+                  label="Weight Goal (pounds)"
+                  type="number"
+                  {...register('weightGoal', {
+                    valueAsNumber: true,
+                    min: { value: 50, message: 'Weight goal must be at least 50 pounds' },
+                    max: { value: 500, message: 'Weight goal must be less than 500 pounds' },
+                  })}
+                  error={!!errors.weightGoal}
+                  helperText={errors.weightGoal?.message}
+                />
               </Box>
+              
+              <TextField
+                fullWidth
+                id="weightGoalTimeframe"
+                label="Weight Goal Timeframe (weeks)"
+                type="number"
+                {...register('weightGoalTimeframe', {
+                  valueAsNumber: true,
+                  min: { value: 1, message: 'Timeframe must be at least 1 week' },
+                  max: { value: 52, message: 'Timeframe must be less than 52 weeks' },
+                })}
+                error={!!errors.weightGoalTimeframe}
+                helperText={errors.weightGoalTimeframe?.message}
+              />
               
               <Controller
                 name="healthGoals"
