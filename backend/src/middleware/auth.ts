@@ -7,7 +7,7 @@ export interface AuthRequest extends Request {
   user?: any;
 }
 
-export const protect = asyncHandler(async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const protect = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   let token;
 
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
@@ -20,9 +20,9 @@ export const protect = asyncHandler(async (req: AuthRequest, res: Response, next
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    req.user = await User.findById(decoded.id);
+    (req as AuthRequest).user = await User.findById(decoded.id);
     
-    if (!req.user) {
+    if (!(req as AuthRequest).user) {
       throw createError('No user found with this id', 404);
     }
     
@@ -33,13 +33,14 @@ export const protect = asyncHandler(async (req: AuthRequest, res: Response, next
 });
 
 export const authorize = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const authReq = req as AuthRequest;
+    if (!authReq.user) {
       throw createError('User not found', 404);
     }
 
-    if (!roles.includes(req.user.role)) {
-      throw createError(`User role ${req.user.role} is not authorized to access this route`, 403);
+    if (!roles.includes(authReq.user.role)) {
+      throw createError(`User role ${authReq.user.role} is not authorized to access this route`, 403);
     }
     
     next();
