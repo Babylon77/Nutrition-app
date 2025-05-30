@@ -372,100 +372,6 @@ export const FoodLog: React.FC = () => {
     }
   };
 
-  const addFoodItem = async (data: AddFoodFormData) => {
-    if (!data.foodQuery.trim()) {
-      setError('Please enter a food item');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-
-      // Use the AI food lookup API
-      const response = await fetch('/api/food/lookup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          foodQuery: data.foodQuery,
-          quantity: data.quantity,
-          unit: data.unit,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get nutrition data');
-      }
-
-      const result = await response.json();
-      
-      console.log('🍕 AI Food Lookup Result:', result.data);
-      
-      const newFoodItem: EnhancedFoodItem = {
-        name: result.data.name,
-        quantity: data.quantity,
-        unit: data.unit,
-        mealType: data.mealType,
-        nutrition: {
-          calories: result.data.nutrition.calories || 0,
-          protein: result.data.nutrition.protein || 0,
-          carbs: result.data.nutrition.carbs || 0,
-          fat: result.data.nutrition.fat || 0,
-          fiber: result.data.nutrition.fiber || 0,
-          sugar: result.data.nutrition.sugar || 0,
-          saturatedFat: result.data.nutrition.saturatedFat || 0,
-          monounsaturatedFat: result.data.nutrition.monounsaturatedFat || 0,
-          polyunsaturatedFat: result.data.nutrition.polyunsaturatedFat || 0,
-          transFat: result.data.nutrition.transFat || 0,
-          omega3: result.data.nutrition.omega3 || 0,
-          omega6: result.data.nutrition.omega6 || 0,
-          sodium: result.data.nutrition.sodium || 0,
-          potassium: result.data.nutrition.potassium || 0,
-          calcium: result.data.nutrition.calcium || 0,
-          magnesium: result.data.nutrition.magnesium || 0,
-          phosphorus: result.data.nutrition.phosphorus || 0,
-          iron: result.data.nutrition.iron || 0,
-          zinc: result.data.nutrition.zinc || 0,
-          selenium: result.data.nutrition.selenium || 0,
-          vitaminA: result.data.nutrition.vitaminA || 0,
-          vitaminC: result.data.nutrition.vitaminC || 0,
-          vitaminD: result.data.nutrition.vitaminD || 0,
-          vitaminE: result.data.nutrition.vitaminE || 0,
-          vitaminK: result.data.nutrition.vitaminK || 0,
-          thiamin: result.data.nutrition.thiamin || 0,
-          riboflavin: result.data.nutrition.riboflavin || 0,
-          niacin: result.data.nutrition.niacin || 0,
-          vitaminB6: result.data.nutrition.vitaminB6 || 0,
-          folate: result.data.nutrition.folate || 0,
-          vitaminB12: result.data.nutrition.vitaminB12 || 0,
-          biotin: result.data.nutrition.biotin || 0,
-          pantothenicAcid: result.data.nutrition.pantothenicAcid || 0,
-          cholesterol: result.data.nutrition.cholesterol || 0,
-          creatine: result.data.nutrition.creatine || 0,
-        },
-        confidence: result.data.confidence || 0.8,
-        weightConversion: result.data.weightConversion || undefined,
-      };
-
-      // Update local state
-      const updatedItems = [...foodItems, newFoodItem];
-      setFoodItems(updatedItems);
-      
-      // Save to backend
-      await saveFoodLogs(selectedDate, updatedItems);
-      
-      setAddFoodOpen(false);
-      reset();
-    } catch (err: any) {
-      setError(err.message || 'Failed to add food item');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // New function: Add food to pending list instead of immediate analysis
   const addToPendingList = (data: AddFoodFormData) => {
     if (!data.foodQuery.trim()) {
@@ -1288,14 +1194,6 @@ export const FoodLog: React.FC = () => {
                     </TextField>
                   )}
                 />
-
-                {/* Instructions for bulk analysis */}
-                <Alert severity="success" sx={{ bgcolor: 'success.50' }}>
-                  <Typography variant="body2">
-                    🎯 <strong>Recommended:</strong> Use "Add to List" to queue multiple foods, then click "Analyze All" 
-                    for faster processing and significant cost savings!
-                  </Typography>
-                </Alert>
               </Stack>
             </DialogContent>
             <DialogActions sx={{ flexDirection: 'column', gap: 1, alignItems: 'stretch', px: 3, pb: 2 }}>
@@ -1322,12 +1220,22 @@ export const FoodLog: React.FC = () => {
           {pendingFoods.length > 0 && (
             <>
               <Divider />
-              <DialogContent>
-                <Typography variant="h6" gutterBottom>
-                  Your Food List ({pendingFoods.length})
-                </Typography>
+              <DialogContent sx={{ pt: 2, pb: 1 }}>
+                <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                  <Typography variant="h6">
+                    Your Food List ({pendingFoods.length})
+                  </Typography>
+                  <Button 
+                    onClick={clearPendingFoods}
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                  >
+                    Clear All
+                  </Button>
+                </Box>
                 
-                <List dense>
+                <List dense sx={{ bgcolor: 'grey.50', borderRadius: 1, mb: 2, maxHeight: 200, overflow: 'auto' }}>
                   {pendingFoods.map((food) => (
                     <ListItem key={food.id}>
                       <ListItemText
@@ -1348,16 +1256,7 @@ export const FoodLog: React.FC = () => {
                   ))}
                 </List>
                 
-                <Box display="flex" gap={2} mt={2}>
-                  <Button 
-                    onClick={clearPendingFoods}
-                    variant="outlined"
-                    color="error"
-                    size="small"
-                  >
-                    Clear All
-                  </Button>
-                  
+                <Box display="flex" justifyContent="center">
                   <Button 
                     onClick={analyzePendingFoods}
                     variant="contained"
@@ -1365,7 +1264,7 @@ export const FoodLog: React.FC = () => {
                     startIcon={bulkAnalyzing ? <CircularProgress size={20} /> : <AnalyticsIcon />}
                     color="primary"
                     size="large"
-                    sx={{ ml: 'auto' }}
+                    sx={{ minWidth: 200 }}
                   >
                     {bulkAnalyzing ? 'Analyzing All...' : `Analyze All ${pendingFoods.length} Foods`}
                   </Button>
