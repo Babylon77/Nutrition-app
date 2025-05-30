@@ -115,7 +115,7 @@ router.get('/summary', protect, asyncHandler(async (req, res) => {
   const foodLogs = await FoodLog.find(query);
 
   // Get unique dates that have logs
-  const uniqueDates = [...new Set(foodLogs.map(log => log.date.toISOString().split('T')[0]))];
+  const uniqueDates = [...new Set(foodLogs.map(log => log.date))];
   const daysLogged = uniqueDates.length;
 
   // Calculate totals
@@ -329,15 +329,11 @@ router.post('/logs', protect, asyncHandler(async (req, res) => {
     throw createError('Date and meals are required', 400);
   }
 
-  const targetDate = new Date(date);
-  
-  // Delete existing logs for this date
+  // Fix: Store date as string to avoid timezone conversion issues
+  // Delete existing logs for this date (compare by date string)
   await FoodLog.deleteMany({
     userId: req.user.id,
-    date: {
-      $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
-      $lte: new Date(targetDate.setHours(23, 59, 59, 999))
-    }
+    date: date  // Compare directly with date string
   });
 
   // Create new logs for each meal type
@@ -364,7 +360,7 @@ router.post('/logs', protect, asyncHandler(async (req, res) => {
 
       const foodLog = await FoodLog.create({
         userId: req.user.id,
-        date: new Date(date),
+        date: date,  // Fix: Store as string instead of converting to Date
         mealType: mealTypeKey,
         foods
       });
@@ -374,11 +370,9 @@ router.post('/logs', protect, asyncHandler(async (req, res) => {
   }
 
   // Return the grouped format by calling the get route logic
-  const parsedDate = new Date(date);
-  const startOfDay = new Date(parsedDate);
+  const startOfDay = new Date(date);
   startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(parsedDate);
-  endOfDay.setHours(23, 59, 59, 999);
+  const endOfDay = new Date(date);
 
   const foodLogs = await FoodLog.find({
     userId: req.user.id,
@@ -437,10 +431,10 @@ router.post('/logs', protect, asyncHandler(async (req, res) => {
   });
 
   const foodLogEntry = {
-    _id: parsedDate.toISOString().split('T')[0],
+    _id: date,
     userId: req.user.id,
-    date: parsedDate,
-    meals: resultMeals,
+    date: new Date(date),
+    meals,
     totalNutrition,
     createdAt: createdLogs[0]?.createdAt || new Date(),
     updatedAt: new Date()
@@ -603,10 +597,10 @@ router.post('/logs/:date', protect, asyncHandler(async (req, res) => {
   });
 
   const foodLogEntry = {
-    _id: parsedDate.toISOString().split('T')[0],
+    _id: date,
     userId: req.user.id,
-    date: parsedDate,
-    meals: resultMeals,
+    date: new Date(date),
+    meals,
     totalNutrition,
     createdAt: createdLogs[0]?.createdAt || new Date(),
     updatedAt: new Date()
