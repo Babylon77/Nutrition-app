@@ -7,7 +7,6 @@ import {
   Button,
   TextField,
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogActions,
   List,
@@ -1131,7 +1130,6 @@ export const FoodLog: React.FC = () => {
                       error={!!errors.foodQuery}
                       helperText={errors.foodQuery?.message}
                       fullWidth
-                      size="large"
                     />
                   )}
                 />
