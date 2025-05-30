@@ -106,6 +106,31 @@ interface AddFoodFormData {
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snacks';
 }
 
+// New interface for pending foods (before AI analysis)
+interface PendingFoodItem {
+  id: string; // Temporary ID for managing the pending list
+  foodQuery: string;
+  quantity: number;
+  unit: string;
+  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snacks';
+}
+
+// Bulk analysis result from backend
+interface BulkAnalysisResult {
+  analyzedFoods: {
+    id: string; // Matches pending food ID
+    name: string;
+    normalizedName: string;
+    quantity: number;
+    unit: string;
+    nutrition: EnhancedNutrition;
+    confidence: number;
+    weightConversion?: WeightConversion;
+  }[];
+  totalApiCost?: number;
+  processingTime?: number;
+}
+
 // Recommended Daily Values (simplified - ideally would come from user profile)
 const getRecommendedDailyValues = () => ({
   // Macronutrients (example for adult male, 2000 cal diet)
@@ -172,6 +197,11 @@ export const FoodLog: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [addFoodOpen, setAddFoodOpen] = useState(false);
   const [addingFood, setAddingFood] = useState(false);
+  
+  // New state for bulk food entry
+  const [pendingFoods, setPendingFoods] = useState<PendingFoodItem[]>([]);
+  const [bulkAnalyzing, setBulkAnalyzing] = useState(false);
+  const [showPendingList, setShowPendingList] = useState(false);
 
   const {
     control,
@@ -434,6 +464,109 @@ export const FoodLog: React.FC = () => {
       setError(err.message || 'Failed to add food item');
     } finally {
       setAddingFood(false);
+    }
+  };
+
+  // New function: Add food to pending list instead of immediate analysis
+  const addToPendingList = (data: AddFoodFormData) => {
+    if (!data.foodQuery.trim()) {
+      setError('Please enter a food item');
+      return;
+    }
+
+    const newPendingFood: PendingFoodItem = {
+      id: `pending-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      foodQuery: data.foodQuery,
+      quantity: data.quantity,
+      unit: data.unit,
+      mealType: data.mealType,
+    };
+
+    setPendingFoods(prev => [...prev, newPendingFood]);
+    setShowPendingList(true);
+    reset();
+    setError('');
+  };
+
+  // Remove food from pending list
+  const removePendingFood = (id: string) => {
+    setPendingFoods(prev => prev.filter(food => food.id !== id));
+  };
+
+  // Clear all pending foods
+  const clearPendingFoods = () => {
+    setPendingFoods([]);
+    setShowPendingList(false);
+  };
+
+  // Bulk analyze all pending foods
+  const analyzePendingFoods = async () => {
+    if (pendingFoods.length === 0) {
+      setError('No pending foods to analyze');
+      return;
+    }
+
+    try {
+      setBulkAnalyzing(true);
+      setError('');
+
+      // Call new bulk analysis API endpoint
+      const response = await fetch('/api/food/bulk-lookup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          foods: pendingFoods.map(food => ({
+            id: food.id,
+            foodQuery: food.foodQuery,
+            quantity: food.quantity,
+            unit: food.unit,
+            mealType: food.mealType,
+          }))
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze foods');
+      }
+
+      const result: { data: BulkAnalysisResult } = await response.json();
+      
+      console.log('🔍 Bulk Analysis Result:', result.data);
+      
+      // Convert analyzed foods to EnhancedFoodItem format
+      const newFoodItems: EnhancedFoodItem[] = result.data.analyzedFoods.map(food => ({
+        name: food.name,
+        quantity: food.quantity,
+        unit: food.unit,
+        mealType: pendingFoods.find(p => p.id === food.id)?.mealType || 'breakfast',
+        nutrition: food.nutrition,
+        confidence: food.confidence,
+        weightConversion: food.weightConversion,
+      }));
+
+      // Update local state with new foods
+      const updatedItems = [...foodItems, ...newFoodItems];
+      setFoodItems(updatedItems);
+      
+      // Save to backend
+      await saveFoodLogs(selectedDate, updatedItems);
+      
+      // Clear pending foods and close dialog
+      clearPendingFoods();
+      setAddFoodOpen(false);
+      
+      // Show success message with cost savings info
+      if (result.data.totalApiCost) {
+        console.log(`💰 API Cost: $${result.data.totalApiCost.toFixed(4)} (saved ${(newFoodItems.length - 1) * 0.002} vs individual calls)`);
+      }
+      
+    } catch (err: any) {
+      setError(err.message || 'Failed to analyze foods');
+    } finally {
+      setBulkAnalyzing(false);
     }
   };
 
@@ -751,8 +884,9 @@ export const FoodLog: React.FC = () => {
                 size="large"
                 startIcon={<AddIcon />}
                 onClick={() => setAddFoodOpen(true)}
+                color={pendingFoods.length > 0 ? "secondary" : "primary"}
               >
-                Add Food
+                {pendingFoods.length > 0 ? `Add Food (${pendingFoods.length} pending)` : 'Add Food'}
               </Button>
             </Box>
 
@@ -1158,16 +1292,91 @@ export const FoodLog: React.FC = () => {
             </DialogContent>
             <DialogActions>
               <Button onClick={() => setAddFoodOpen(false)}>Cancel</Button>
+              
+              {/* Option 1: Add to pending list for bulk analysis */}
+              <Button 
+                onClick={handleSubmit(addToPendingList)}
+                variant="outlined"
+                startIcon={<AddIcon />}
+                color="secondary"
+              >
+                Add to List ({pendingFoods.length})
+              </Button>
+              
+              {/* Option 2: Immediate individual analysis */}
               <Button 
                 type="submit" 
                 variant="contained"
                 disabled={addingFood}
                 startIcon={addingFood ? <CircularProgress size={20} /> : <AddIcon />}
               >
-                {addingFood ? 'Analyzing...' : 'Add Food'}
+                {addingFood ? 'Analyzing...' : 'Analyze Now'}
               </Button>
             </DialogActions>
           </form>
+          
+          {/* Pending Foods Section */}
+          {showPendingList && pendingFoods.length > 0 && (
+            <>
+              <Divider />
+              <DialogContent>
+                <Typography variant="h6" gutterBottom>
+                  Pending Foods ({pendingFoods.length})
+                </Typography>
+                
+                <List dense>
+                  {pendingFoods.map((food) => (
+                    <ListItem key={food.id}>
+                      <ListItemText
+                        primary={`${food.quantity} ${food.unit} ${food.foodQuery}`}
+                        secondary={`${food.mealType.charAt(0).toUpperCase() + food.mealType.slice(1)}`}
+                      />
+                      <ListItemSecondaryAction>
+                        <IconButton 
+                          edge="end" 
+                          aria-label="delete"
+                          onClick={() => removePendingFood(food.id)}
+                          size="small"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  ))}
+                </List>
+                
+                <Box display="flex" gap={2} mt={2}>
+                  <Button 
+                    onClick={clearPendingFoods}
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                  >
+                    Clear All
+                  </Button>
+                  
+                  <Button 
+                    onClick={analyzePendingFoods}
+                    variant="contained"
+                    disabled={bulkAnalyzing || pendingFoods.length === 0}
+                    startIcon={bulkAnalyzing ? <CircularProgress size={20} /> : <AddIcon />}
+                    color="primary"
+                    sx={{ ml: 'auto' }}
+                  >
+                    {bulkAnalyzing ? 'Analyzing All...' : `Analyze All ${pendingFoods.length} Foods`}
+                  </Button>
+                </Box>
+                
+                {pendingFoods.length > 1 && (
+                  <Alert severity="success" sx={{ mt: 2 }}>
+                    <Typography variant="body2">
+                      💰 Bulk analysis saves API costs! {pendingFoods.length} foods = 1 API call instead of {pendingFoods.length}.
+                    </Typography>
+                  </Alert>
+                )}
+              </DialogContent>
+            </>
+          )}
         </Dialog>
       </Box>
     </LocalizationProvider>
