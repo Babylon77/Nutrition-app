@@ -15,6 +15,7 @@ import { notFound } from './middleware/notFound';
 // Import routes
 import authRoutes from './routes/auth';
 import foodRoutes from './routes/food';
+import personalFoodRoutes from './routes/personalFood';
 import bloodworkRoutes from './routes/bloodwork';
 import analysisRoutes from './routes/analysis';
 import healthRoutes from './routes/health';
@@ -57,6 +58,7 @@ if (process.env.NODE_ENV === 'production') {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/food', foodRoutes);
+app.use('/api/personal-foods', personalFoodRoutes);
 app.use('/api/bloodwork', bloodworkRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/health', healthRoutes);
