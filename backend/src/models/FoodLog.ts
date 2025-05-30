@@ -61,7 +61,7 @@ export interface IFoodItem {
 
 export interface IFoodLog extends Document {
   userId: mongoose.Types.ObjectId;
-  date: string;
+  date: Date;
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   foods: IFoodItem[];
   totalCalories: number;
@@ -151,7 +151,7 @@ const foodLogSchema = new Schema<IFoodLog>({
     required: true
   },
   date: {
-    type: String,
+    type: Date,
     required: [true, 'Date is required']
   },
   mealType: {
