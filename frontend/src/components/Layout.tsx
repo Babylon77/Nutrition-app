@@ -22,6 +22,7 @@ import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   Restaurant as RestaurantIcon,
+  MenuBook as MenuBookIcon,
   Biotech as BiotechIcon,
   Analytics as AnalyticsIcon,
   Person as PersonIcon,
@@ -40,6 +41,7 @@ interface NavigationItem {
 const navigationItems: NavigationItem[] = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Food Log', icon: <RestaurantIcon />, path: '/food-log' },
+  { text: 'Personal Foods', icon: <MenuBookIcon />, path: '/personal-foods' },
   { text: 'Health Metrics', icon: <BiotechIcon />, path: '/bloodwork' },
   { text: 'Analysis', icon: <AnalyticsIcon />, path: '/analysis' },
   { text: 'Profile', icon: <PersonIcon />, path: '/profile' },

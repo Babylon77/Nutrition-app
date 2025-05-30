@@ -8,6 +8,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { FoodLog } from './pages/FoodLog';
+import PersonalFoods from './pages/PersonalFoods';
 import { Bloodwork } from './pages/Bloodwork';
 import { AnalysisPage } from './pages/Analysis';
 import { Profile } from './pages/Profile';
@@ -56,6 +57,7 @@ function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="food-log" element={<FoodLog />} />
+              <Route path="personal-foods" element={<PersonalFoods />} />
               <Route path="bloodwork" element={<Bloodwork />} />
               <Route path="analysis" element={<AnalysisPage />} />
               <Route path="profile" element={<Profile />} />
