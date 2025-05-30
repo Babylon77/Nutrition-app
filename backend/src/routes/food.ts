@@ -100,16 +100,21 @@ router.get('/summary', protect, asyncHandler(async (req, res) => {
   const { days = 30 } = req.query;
 
   const daysNum = parseInt(days as string);
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(endDate.getDate() - daysNum);
+  
+  // Generate array of date strings for the range
+  const dateStrings = [];
+  for (let i = 0; i < daysNum; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    dateStrings.push(`${year}-${month}-${day}`);
+  }
 
   const query = {
     userId: req.user.id,
-    date: {
-      $gte: startDate,
-      $lte: endDate
-    }
+    date: { $in: dateStrings }  // Use $in with array of date strings
   };
 
   const foodLogs = await FoodLog.find(query);
@@ -190,19 +195,10 @@ router.get('/:foodId/nutrition', protect, asyncHandler(async (req, res) => {
 router.get('/logs/:date', protect, asyncHandler(async (req, res) => {
   const { date } = req.params;
   
-  // Parse date and get start/end of day
-  const targetDate = new Date(date);
-  const startOfDay = new Date(targetDate);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(targetDate);
-  endOfDay.setHours(23, 59, 59, 999);
-
+  // Since date is now stored as string, do direct string comparison
   const foodLogs = await FoodLog.find({
     userId: req.user.id,
-    date: {
-      $gte: startOfDay,
-      $lte: endOfDay
-    }
+    date: date  // Direct string comparison instead of date range
   });
 
   // Group by meal type
@@ -257,9 +253,9 @@ router.get('/logs/:date', protect, asyncHandler(async (req, res) => {
   }
 
   const foodLogEntry = {
-    _id: targetDate.toISOString().split('T')[0],
+    _id: date,
     userId: req.user.id,
-    date: targetDate,
+    date: date,
     meals,
     totalNutrition,
     createdAt: foodLogs[0]?.createdAt || new Date(),
@@ -607,15 +603,10 @@ router.put('/logs/:date', protect, asyncHandler(async (req, res) => {
     throw createError('Meals are required', 400);
   }
 
-  const targetDate = new Date(date);
-  
-  // Delete existing logs for this date
+  // Delete existing logs for this date using string comparison
   await FoodLog.deleteMany({
     userId: req.user.id,
-    date: {
-      $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
-      $lte: new Date(targetDate.setHours(23, 59, 59, 999))
-    }
+    date: date  // Direct string comparison
   });
 
   // Create new logs for each meal type
