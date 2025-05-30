@@ -82,7 +82,7 @@ git pull origin master
 
 ### **Local Development Environment** 
 - **Branch**: `develop` or `feature/*`
-- **URL**: `http://localhost:3000` (frontend) + `http://localhost:5001` (backend)
+- **URL**: `http://localhost:3000` (frontend) + `http://localhost:5000` (backend)
 - **Database**: `nutrition-app-dev` (local test data) OR same as production (your choice)
 - **Users**: You, testers, stakeholders
 - **Purpose**: V2 feature development, integration testing, demos
@@ -215,8 +215,11 @@ NODE_ENV=production  # (still uses production build)
 git checkout develop
 git pull origin develop
 
-# Start local servers
-npm run dev  # This starts both frontend and backend
+# Start local servers (both frontend and backend)
+npm start  # This starts both servers concurrently
+
+# Frontend: http://localhost:3000
+# Backend:  http://localhost:5000
 
 # Work on features...
 # Test locally at http://localhost:3000
