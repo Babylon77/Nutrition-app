@@ -827,6 +827,181 @@ Focus on:
       return [];
     }
   }
+
+  async bulkLookupFoods(foodQueries: string[]): Promise<Array<{
+    name: string;
+    normalizedName: string;
+    nutrition: any;
+    confidence: number;
+    weightConversion?: any;
+  }>> {
+    if (foodQueries.length === 0) {
+      return [];
+    }
+
+    const prompt = `
+You are a nutrition expert with comprehensive knowledge of food composition. Analyze the following list of food items and provide detailed nutritional information for each one.
+
+Food Items to Analyze:
+${foodQueries.map((query, index) => `${index + 1}. ${query}`).join('\n')}
+
+IMPORTANT: Return a JSON array with nutritional data for each food item in the EXACT same order as listed above.
+
+For each food item, provide:
+1. Standardized name
+2. Complete nutritional breakdown (same format as single food analysis)
+3. Confidence score (0-1)
+
+Return ONLY a valid JSON array like this:
+[
+  {
+    "name": "Grilled Chicken Breast",
+    "normalizedName": "grilled chicken breast",
+    "nutrition": {
+      "calories": 231,
+      "protein": 43.5,
+      "carbs": 0,
+      "fat": 5.0,
+      "fiber": 0,
+      "sugar": 0,
+      "sodium": 104,
+      "potassium": 421,
+      "calcium": 15,
+      "magnesium": 32,
+      "phosphorus": 229,
+      "iron": 1.04,
+      "zinc": 1.09,
+      "selenium": 30.6,
+      "vitaminA": 16,
+      "vitaminC": 2.4,
+      "vitaminD": 0.3,
+      "vitaminE": 0.27,
+      "vitaminK": 2.4,
+      "thiamin": 0.087,
+      "riboflavin": 0.166,
+      "niacin": 14.772,
+      "vitaminB6": 0.862,
+      "folate": 4,
+      "vitaminB12": 0.34,
+      "biotin": 10.4,
+      "pantothenicAcid": 1.329,
+      "cholesterol": 104,
+      "saturatedFat": 1.35,
+      "monounsaturatedFat": 1.84,
+      "polyunsaturatedFat": 1.08,
+      "transFat": 0.04,
+      "omega3": 0.08,
+      "omega6": 0.85,
+      "creatine": 0.4
+    },
+    "confidence": 0.95,
+    "weightConversion": {
+      "grams": 172,
+      "ounces": 6.07,
+      "pounds": 0.38
+    }
+  }
+]
+
+Ensure the array has exactly ${foodQueries.length} items in the same order as the input list.
+    `;
+
+    try {
+      const response = await this.callOpenAI(prompt, 3000);
+      
+      let cleanedResponse = response.trim();
+      
+      // Remove markdown code blocks if present
+      if (cleanedResponse.includes('```json')) {
+        const jsonMatch = cleanedResponse.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          cleanedResponse = jsonMatch[1].trim();
+        }
+      } else if (cleanedResponse.includes('```')) {
+        const jsonMatch = cleanedResponse.match(/```\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          cleanedResponse = jsonMatch[1].trim();
+        }
+      }
+
+      const parsed = JSON.parse(cleanedResponse);
+      
+      if (!Array.isArray(parsed)) {
+        throw new Error('Expected array response');
+      }
+
+      // Ensure we have the right number of results
+      if (parsed.length !== foodQueries.length) {
+        throw new Error(`Expected ${foodQueries.length} results, got ${parsed.length}`);
+      }
+
+      // Validate and normalize each result
+      return parsed.map((item, index) => ({
+        name: item.name || foodQueries[index],
+        normalizedName: item.normalizedName || foodQueries[index].toLowerCase(),
+        nutrition: {
+          calories: Number(item.nutrition?.calories) || 0,
+          protein: Number(item.nutrition?.protein) || 0,
+          carbs: Number(item.nutrition?.carbs) || 0,
+          fat: Number(item.nutrition?.fat) || 0,
+          fiber: Number(item.nutrition?.fiber) || 0,
+          sugar: Number(item.nutrition?.sugar) || 0,
+          sodium: Number(item.nutrition?.sodium) || 0,
+          potassium: Number(item.nutrition?.potassium) || 0,
+          calcium: Number(item.nutrition?.calcium) || 0,
+          magnesium: Number(item.nutrition?.magnesium) || 0,
+          phosphorus: Number(item.nutrition?.phosphorus) || 0,
+          iron: Number(item.nutrition?.iron) || 0,
+          zinc: Number(item.nutrition?.zinc) || 0,
+          selenium: Number(item.nutrition?.selenium) || 0,
+          vitaminA: Number(item.nutrition?.vitaminA) || 0,
+          vitaminC: Number(item.nutrition?.vitaminC) || 0,
+          vitaminD: Number(item.nutrition?.vitaminD) || 0,
+          vitaminE: Number(item.nutrition?.vitaminE) || 0,
+          vitaminK: Number(item.nutrition?.vitaminK) || 0,
+          thiamin: Number(item.nutrition?.thiamin) || 0,
+          riboflavin: Number(item.nutrition?.riboflavin) || 0,
+          niacin: Number(item.nutrition?.niacin) || 0,
+          vitaminB6: Number(item.nutrition?.vitaminB6) || 0,
+          folate: Number(item.nutrition?.folate) || 0,
+          vitaminB12: Number(item.nutrition?.vitaminB12) || 0,
+          biotin: Number(item.nutrition?.biotin) || 0,
+          pantothenicAcid: Number(item.nutrition?.pantothenicAcid) || 0,
+          cholesterol: Number(item.nutrition?.cholesterol) || 0,
+          saturatedFat: Number(item.nutrition?.saturatedFat) || 0,
+          monounsaturatedFat: Number(item.nutrition?.monounsaturatedFat) || 0,
+          polyunsaturatedFat: Number(item.nutrition?.polyunsaturatedFat) || 0,
+          transFat: Number(item.nutrition?.transFat) || 0,
+          omega3: Number(item.nutrition?.omega3) || 0,
+          omega6: Number(item.nutrition?.omega6) || 0,
+          creatine: Number(item.nutrition?.creatine) || 0,
+        },
+        confidence: Math.min(Math.max(Number(item.confidence) || 0.8, 0), 1),
+        weightConversion: item.weightConversion || undefined
+      }));
+
+    } catch (error) {
+      logger.error('Bulk food lookup failed:', error);
+      
+      // Fallback: return empty nutrition data for each query
+      return foodQueries.map(query => ({
+        name: query,
+        normalizedName: query.toLowerCase(),
+        nutrition: {
+          calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0,
+          sodium: 0, potassium: 0, calcium: 0, magnesium: 0, phosphorus: 0,
+          iron: 0, zinc: 0, selenium: 0, vitaminA: 0, vitaminC: 0, vitaminD: 0,
+          vitaminE: 0, vitaminK: 0, thiamin: 0, riboflavin: 0, niacin: 0,
+          vitaminB6: 0, folate: 0, vitaminB12: 0, biotin: 0, pantothenicAcid: 0,
+          cholesterol: 0, saturatedFat: 0, monounsaturatedFat: 0, 
+          polyunsaturatedFat: 0, transFat: 0, omega3: 0, omega6: 0,
+          creatine: 0
+        },
+        confidence: 0.1,
+        weightConversion: undefined
+      }));
+    }
+  }
 }
 
 export const aiService = new AIService(); 

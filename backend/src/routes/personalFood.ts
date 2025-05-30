@@ -64,6 +64,24 @@ router.get('/', protect, asyncHandler(async (req, res) => {
   });
 }));
 
+// @desc    Clear imported foods (for re-import with correct usage counts)
+// @route   DELETE /api/personal-foods/clear-imported
+// @access  Private
+router.delete('/clear-imported', protect, asyncHandler(async (req, res) => {
+  const result = await PersonalFood.deleteMany({
+    userId: req.user._id,
+    sourceType: 'imported'
+  });
+
+  res.json({
+    success: true,
+    data: {
+      deletedCount: result.deletedCount
+    },
+    message: `Cleared ${result.deletedCount} imported foods from your personal database`
+  });
+}));
+
 // @desc    Get single personal food by ID
 // @route   GET /api/personal-foods/:id
 // @access  Private
@@ -337,6 +355,187 @@ router.get('/categories/stats', protect, asyncHandler(async (req, res) => {
       totalFoods,
       favoritesCount
     }
+  });
+}));
+
+// @desc    Import foods from existing food logs to personal database  
+// @route   POST /api/personal-foods/import-from-logs
+// @access  Private
+router.post('/import-from-logs', protect, asyncHandler(async (req, res) => {
+  const { days = 30 } = req.body;
+  
+  // Get user's food logs from the last X days
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(endDate.getDate() - days);
+  
+  const { FoodLog } = require('../models/FoodLog');
+  const foodLogs = await FoodLog.find({
+    userId: req.user._id,
+    date: {
+      $gte: startDate,
+      $lte: endDate
+    }
+  });
+
+  if (foodLogs.length === 0) {
+    return res.json({
+      success: true,
+      data: {
+        imported: 0,
+        skipped: 0,
+        duplicates: 0
+      },
+      message: 'No food logs found in the specified time period'
+    });
+  }
+
+  // Collect all foods from all meal logs across all days
+  const allFoods = [];
+  foodLogs.forEach(log => {
+    // Each log represents one meal, so go through all foods in that meal
+    log.foods.forEach(food => {
+      allFoods.push({
+        name: food.name,
+        quantity: food.quantity,
+        unit: food.unit,
+        nutrition: {
+          calories: food.calories || 0,
+          protein: food.protein || 0,
+          carbs: food.carbs || 0,
+          fat: food.fat || 0,
+          fiber: food.fiber || 0,
+          sugar: food.sugar || 0,
+          saturatedFat: food.saturatedFat || 0,
+          monounsaturatedFat: food.monounsaturatedFat || 0,
+          polyunsaturatedFat: food.polyunsaturatedFat || 0,
+          transFat: food.transFat || 0,
+          omega3: food.omega3 || 0,
+          omega6: food.omega6 || 0,
+          sodium: food.sodium || 0,
+          potassium: food.potassium || 0,
+          calcium: food.calcium || 0,
+          magnesium: food.magnesium || 0,
+          phosphorus: food.phosphorus || 0,
+          iron: food.iron || 0,
+          zinc: food.zinc || 0,
+          selenium: food.selenium || 0,
+          vitaminA: food.vitaminA || 0,
+          vitaminC: food.vitaminC || 0,
+          vitaminD: food.vitaminD || 0,
+          vitaminE: food.vitaminE || 0,
+          vitaminK: food.vitaminK || 0,
+          thiamin: food.thiamin || 0,
+          riboflavin: food.riboflavin || 0,
+          niacin: food.niacin || 0,
+          vitaminB6: food.vitaminB6 || 0,
+          folate: food.folate || 0,
+          vitaminB12: food.vitaminB12 || 0,
+          biotin: food.biotin || 0,
+          pantothenicAcid: food.pantothenicAcid || 0,
+          cholesterol: food.cholesterol || 0,
+          creatine: food.creatine || 0,
+          confidence: food.confidence || 0.8,
+          weightConversion: food.weightConversion
+        }
+      });
+    });
+  });
+
+  console.log(`Found ${allFoods.length} food items across ${foodLogs.length} days`);
+
+  // Count occurrences and track usage of each food
+  const foodUsageMap = new Map();
+  allFoods.forEach(food => {
+    const normalizedName = food.name.toLowerCase().trim();
+    if (!foodUsageMap.has(normalizedName)) {
+      foodUsageMap.set(normalizedName, {
+        food: food,
+        count: 1,
+        dates: []
+      });
+    } else {
+      const existing = foodUsageMap.get(normalizedName);
+      existing.count++;
+      foodUsageMap.set(normalizedName, existing);
+    }
+  });
+
+  // Also track the dates each food was used
+  foodLogs.forEach(log => {
+    log.foods.forEach(food => {
+      const normalizedName = food.name.toLowerCase().trim();
+      if (foodUsageMap.has(normalizedName)) {
+        const usage = foodUsageMap.get(normalizedName);
+        usage.dates.push(log.date);
+        foodUsageMap.set(normalizedName, usage);
+      }
+    });
+  });
+
+  console.log(`Found ${foodUsageMap.size} unique foods to import with usage counts`);
+
+  let imported = 0;
+  let duplicates = 0;
+  let skipped = 0;
+
+  // Try to import each unique food with proper usage counts
+  for (const [normalizedName, foodData] of foodUsageMap) {
+    try {
+      // Check if this food already exists in personal database
+      const existingFood = await PersonalFood.findOne({
+        userId: req.user._id,
+        normalizedName: normalizedName
+      });
+
+      if (existingFood) {
+        console.log(`⏭️  Food already exists: ${foodData.food.name} (used ${foodData.count} times)`);
+        duplicates++;
+        continue;
+      }
+
+      // Find the most recent usage date
+      const mostRecentDate = foodData.dates.length > 0 
+        ? new Date(Math.max(...foodData.dates.map(d => new Date(d).getTime())))
+        : new Date();
+
+      // Create personal food from food log item
+      const personalFoodData = {
+        userId: req.user._id,
+        name: foodData.food.name,
+        normalizedName: normalizedName,
+        defaultQuantity: foodData.food.quantity,
+        defaultUnit: foodData.food.unit,
+        nutrition: foodData.food.nutrition,
+        category: 'other', // Default category
+        sourceType: 'imported' as const,
+        originalQuery: foodData.food.name,
+        timesUsed: foodData.count, // Use actual count from logs
+        lastUsed: mostRecentDate, // Use most recent usage date
+      };
+
+      console.log(`🔄 Creating PersonalFood: ${foodData.food.name} (used ${foodData.count} times)`);
+
+      const personalFood = new PersonalFood(personalFoodData);
+      await personalFood.save();
+      console.log(`✅ Successfully imported: ${foodData.food.name} with ${foodData.count} uses`);
+      imported++;
+      
+    } catch (error: any) {
+      console.log(`❌ Failed to import food ${foodData.food.name}:`, error.message);
+      skipped++;
+    }
+  }
+
+  res.json({
+    success: true,
+    data: {
+      imported,
+      duplicates,
+      skipped,
+      totalUnique: foodUsageMap.size,
+    },
+    message: `Successfully imported ${imported} foods to your personal database. ${duplicates} already existed, ${skipped} failed.`
   });
 }));
 

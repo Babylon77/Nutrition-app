@@ -1,6 +1,7 @@
 import express from 'express';
 import Joi from 'joi';
 import { FoodLog } from '../models/FoodLog';
+import PersonalFood from '../models/PersonalFood';
 import { foodService } from '../services/foodService';
 import { aiService } from '../services/aiService';
 import { asyncHandler, createError } from '../middleware/errorHandler';
@@ -810,6 +811,236 @@ router.post('/lookup', protect, asyncHandler(async (req, res) => {
         fallback: true
       }
     });
+  }
+}));
+
+// @desc    Smart food entry with personal lookup and bulk processing
+// @route   POST /api/food/smart-entry
+// @access  Private
+router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
+  const { action, data } = req.body;
+
+  switch (action) {
+    case 'search_personal':
+      // Search personal foods for suggestions
+      console.log(`🔍 Searching for "${data.query}" for user: ${req.user._id}`);
+      
+      const personalFoods = await PersonalFood.find({
+        userId: req.user._id,
+        $or: [
+          { name: { $regex: data.query, $options: 'i' } },
+          { normalizedName: { $regex: data.query, $options: 'i' } }
+        ]
+      }).limit(5).sort({ timesUsed: -1 });
+
+      console.log(`🔍 Personal food search for "${data.query}" by user ${req.user._id}: found ${personalFoods.length} results`);
+      console.log(`📋 Found foods: ${personalFoods.map(f => f.name).join(', ')}`);
+      
+      return res.json({
+        success: true,
+        action: 'search_personal',
+        data: { suggestions: personalFoods }
+      });
+
+    case 'add_to_queue':
+      // Add item to processing queue (stored in session/memory for now)
+      // In production, you might store this in Redis or database
+      if (!req.session.foodQueue) {
+        req.session.foodQueue = [];
+      }
+
+      const queueItem = {
+        id: Date.now().toString(),
+        name: data.name,
+        quantity: data.quantity,
+        unit: data.unit,
+        mealType: data.mealType,
+        isPersonalFood: data.isPersonalFood || false,
+        personalFoodId: data.personalFoodId || null,
+        status: data.isPersonalFood ? 'ready' : 'needs_analysis'
+      };
+
+      req.session.foodQueue.push(queueItem);
+
+      return res.json({
+        success: true,
+        action: 'add_to_queue',
+        data: { queue: req.session.foodQueue }
+      });
+
+    case 'get_queue':
+      // Get current queue state
+      return res.json({
+        success: true,
+        action: 'get_queue',
+        data: { queue: req.session.foodQueue || [] }
+      });
+
+    case 'remove_from_queue':
+      // Remove item from queue
+      if (req.session.foodQueue) {
+        req.session.foodQueue = req.session.foodQueue.filter(
+          item => item.id !== data.itemId
+        );
+      }
+
+      return res.json({
+        success: true,
+        action: 'remove_from_queue',
+        data: { queue: req.session.foodQueue || [] }
+      });
+
+    case 'clear_queue':
+      // Clear entire queue
+      req.session.foodQueue = [];
+
+      return res.json({
+        success: true,
+        action: 'clear_queue',
+        data: { queue: [] }
+      });
+
+    case 'process_queue':
+      // Process all items in queue
+      const queue = req.session.foodQueue || [];
+      const readyItems = queue.filter(item => item.status === 'ready');
+      const needsAnalysis = queue.filter(item => item.status === 'needs_analysis');
+
+      let analysisResults = [];
+
+      // Bulk analyze unknown foods if any
+      if (needsAnalysis.length > 0) {
+        const foodQueries = needsAnalysis.map(item => 
+          `${item.quantity} ${item.unit} ${item.name}`
+        );
+
+        try {
+          analysisResults = await aiService.bulkLookupFoods(foodQueries);
+        } catch (error) {
+          // Fallback to individual analysis
+          const individualResults = [];
+          for (const item of needsAnalysis) {
+            try {
+              const result = await aiService.lookupFood(
+                `${item.quantity} ${item.unit} ${item.name}`
+              );
+              individualResults.push(result);
+            } catch (err) {
+              individualResults.push({
+                name: item.name,
+                error: 'Analysis failed',
+                nutrition: { calories: 0, protein: 0, carbs: 0, fat: 0 }
+              });
+            }
+          }
+          analysisResults = individualResults;
+        }
+      }
+
+      // Prepare final food items for logging
+      const finalFoodItems = [];
+
+      // Add ready items (from personal foods)
+      for (const item of readyItems) {
+        if (item.isPersonalFood && item.personalFoodId) {
+          const personalFood = await PersonalFood.findById(item.personalFoodId);
+          if (personalFood) {
+            finalFoodItems.push({
+              name: personalFood.name,
+              quantity: item.quantity,
+              unit: item.unit,
+              mealType: item.mealType,
+              nutrition: personalFood.nutrition,
+              confidence: 1.0,
+              source: 'personal'
+            });
+
+            // Update usage stats
+            await PersonalFood.findByIdAndUpdate(
+              item.personalFoodId,
+              {
+                $inc: { timesUsed: 1 },
+                $set: { lastUsed: new Date() }
+              }
+            );
+          }
+        }
+      }
+
+      // Add analyzed items
+      for (let i = 0; i < analysisResults.length; i++) {
+        const result = analysisResults[i];
+        const originalItem = needsAnalysis[i];
+
+        finalFoodItems.push({
+          name: result.name || originalItem.name,
+          quantity: originalItem.quantity,
+          unit: originalItem.unit,
+          mealType: originalItem.mealType,
+          nutrition: result.nutrition || {},
+          confidence: result.confidence || 0.8,
+          source: 'ai'
+        });
+      }
+
+      // Clear the queue
+      req.session.foodQueue = [];
+
+      return res.json({
+        success: true,
+        action: 'process_queue',
+        data: {
+          processedItems: finalFoodItems,
+          analysisResults: analysisResults,
+          queue: []
+        }
+      });
+
+    case 'quick_add_personal':
+      // Instantly add a personal food without queue
+      console.log(`🚀 Quick add request for personalFoodId: ${data.personalFoodId} by user: ${req.user._id}`);
+      
+      const personalFood = await PersonalFood.findOne({
+        _id: data.personalFoodId,
+        userId: req.user._id
+      });
+      
+      if (!personalFood) {
+        console.log(`❌ Personal food not found: ${data.personalFoodId} for user: ${req.user._id}`);
+        throw createError('Personal food not found', 404);
+      }
+
+      console.log(`✅ Found personal food: ${personalFood.name}`);
+
+      const quickFoodItem = {
+        name: personalFood.name,
+        quantity: data.quantity || personalFood.defaultQuantity,
+        unit: data.unit || personalFood.defaultUnit,
+        mealType: data.mealType,
+        nutrition: personalFood.nutrition,
+        confidence: 1.0,
+        source: 'personal'
+      };
+
+      // Update usage stats
+      await PersonalFood.findByIdAndUpdate(
+        data.personalFoodId,
+        {
+          $inc: { timesUsed: 1 },
+          $set: { lastUsed: new Date() }
+        }
+      );
+
+      console.log(`📝 Quick add successful: ${personalFood.name}`);
+
+      return res.json({
+        success: true,
+        action: 'quick_add_personal',
+        data: { foodItem: quickFoodItem }
+      });
+
+    default:
+      throw createError('Invalid action', 400);
   }
 }));
 

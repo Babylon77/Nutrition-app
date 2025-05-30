@@ -21,6 +21,10 @@ import {
   Divider,
   MenuItem,
   Stack,
+  Grid,
+  LinearProgress,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -35,6 +39,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useForm, Controller } from 'react-hook-form';
+import { SmartFoodEntry } from '../components/SmartFoodEntry';
 
 interface EnhancedNutrition {
   // Macronutrients
@@ -100,7 +105,7 @@ interface EnhancedFoodItem {
 }
 
 interface AddFoodFormData {
-  foodQuery: string;
+  foodName: string;
   quantity: number;
   unit: string;
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snacks';
@@ -172,20 +177,19 @@ export const FoodLog: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [addFoodOpen, setAddFoodOpen] = useState(false);
   const [addingFood, setAddingFood] = useState(false);
+  const [searchingSuggestions, setSearchingSuggestions] = useState(false);
+  const [personalFoodSuggestions, setPersonalFoodSuggestions] = useState<any[]>([]);
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<AddFoodFormData>({
+  const { control, handleSubmit, reset, formState: { errors }, watch, getValues } = useForm<AddFoodFormData>({
     defaultValues: {
-      foodQuery: '',
+      foodName: '',
       quantity: 1,
       unit: 'serving',
       mealType: 'breakfast',
-    },
+    }
   });
+
+  const watchedFoodName = watch('foodName');
 
   // Load food logs for the selected date
   const loadFoodLogs = async (date: Date) => {
@@ -336,6 +340,85 @@ export const FoodLog: React.FC = () => {
     loadFoodLogs(selectedDate);
   }, [selectedDate]);
 
+  // Search personal foods when food name changes
+  useEffect(() => {
+    const searchPersonalFoods = async () => {
+      if (watchedFoodName && watchedFoodName.length >= 2) {
+        try {
+          setSearchingSuggestions(true);
+          const response = await fetch(`/api/personal-foods?search=${encodeURIComponent(watchedFoodName)}&limit=5`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            },
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            setPersonalFoodSuggestions(result.data.foods || []);
+          }
+        } catch (error) {
+          console.error('Error searching personal foods:', error);
+        } finally {
+          setSearchingSuggestions(false);
+        }
+      } else {
+        setPersonalFoodSuggestions([]);
+      }
+    };
+
+    const timeoutId = setTimeout(searchPersonalFoods, 300); // Debounce
+    return () => clearTimeout(timeoutId);
+  }, [watchedFoodName]);
+
+  // Quick add from personal food database
+  const addFromPersonalFood = async (personalFood: any, customQuantity?: number, customUnit?: string) => {
+    try {
+      setAddingFood(true);
+      setError('');
+
+      // Get form data for meal type
+      const formData = getValues();
+
+      const newFoodItem: EnhancedFoodItem = {
+        name: personalFood.name,
+        quantity: customQuantity || personalFood.defaultQuantity,
+        unit: customUnit || personalFood.defaultUnit,
+        mealType: formData.mealType,
+        nutrition: personalFood.nutrition,
+        confidence: 0.95, // High confidence since it's from personal database
+        weightConversion: undefined,
+      };
+
+      // Update local state
+      const updatedItems = [...foodItems, newFoodItem];
+      setFoodItems(updatedItems);
+      
+      // Save to backend
+      await saveFoodLogs(selectedDate, updatedItems);
+      
+      // Increment usage count in personal database
+      await fetch(`/api/personal-foods/${personalFood.id}/use`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          quantity: customQuantity || personalFood.defaultQuantity,
+          unit: customUnit || personalFood.defaultUnit,
+        }),
+      });
+
+      setAddFoodOpen(false);
+      reset();
+      setPersonalFoodSuggestions([]);
+    } catch (err: any) {
+      setError(err.message || 'Failed to add food item');
+    } finally {
+      setAddingFood(false);
+    }
+  };
+
   // Handle date change
   const handleDateChange = (newDate: Date | null) => {
     if (newDate) {
@@ -344,7 +427,7 @@ export const FoodLog: React.FC = () => {
   };
 
   const addFoodItem = async (data: AddFoodFormData) => {
-    if (!data.foodQuery.trim()) {
+    if (!data.foodName.trim()) {
       setError('Please enter a food item');
       return;
     }
@@ -361,7 +444,7 @@ export const FoodLog: React.FC = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
-          foodQuery: data.foodQuery,
+          foodQuery: data.foodName,
           quantity: data.quantity,
           unit: data.unit,
         }),
@@ -448,6 +531,65 @@ export const FoodLog: React.FC = () => {
       setError('Failed to remove food item');
       // Revert the change if save failed
       loadFoodLogs(selectedDate);
+    }
+  };
+
+  const handleSmartFoodsAdded = async (newFoodItems: any[]) => {
+    try {
+      // Convert the smart entry format to our EnhancedFoodItem format
+      const convertedItems: EnhancedFoodItem[] = newFoodItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        mealType: item.mealType as 'breakfast' | 'lunch' | 'dinner' | 'snacks',
+        nutrition: {
+          calories: item.nutrition?.calories || 0,
+          protein: item.nutrition?.protein || 0,
+          carbs: item.nutrition?.carbs || 0,
+          fat: item.nutrition?.fat || 0,
+          fiber: item.nutrition?.fiber || 0,
+          sugar: item.nutrition?.sugar || 0,
+          saturatedFat: item.nutrition?.saturatedFat || 0,
+          monounsaturatedFat: item.nutrition?.monounsaturatedFat || 0,
+          polyunsaturatedFat: item.nutrition?.polyunsaturatedFat || 0,
+          transFat: item.nutrition?.transFat || 0,
+          omega3: item.nutrition?.omega3 || 0,
+          omega6: item.nutrition?.omega6 || 0,
+          sodium: item.nutrition?.sodium || 0,
+          potassium: item.nutrition?.potassium || 0,
+          calcium: item.nutrition?.calcium || 0,
+          magnesium: item.nutrition?.magnesium || 0,
+          phosphorus: item.nutrition?.phosphorus || 0,
+          iron: item.nutrition?.iron || 0,
+          zinc: item.nutrition?.zinc || 0,
+          selenium: item.nutrition?.selenium || 0,
+          vitaminA: item.nutrition?.vitaminA || 0,
+          vitaminC: item.nutrition?.vitaminC || 0,
+          vitaminD: item.nutrition?.vitaminD || 0,
+          vitaminE: item.nutrition?.vitaminE || 0,
+          vitaminK: item.nutrition?.vitaminK || 0,
+          thiamin: item.nutrition?.thiamin || 0,
+          riboflavin: item.nutrition?.riboflavin || 0,
+          niacin: item.nutrition?.niacin || 0,
+          vitaminB6: item.nutrition?.vitaminB6 || 0,
+          folate: item.nutrition?.folate || 0,
+          vitaminB12: item.nutrition?.vitaminB12 || 0,
+          biotin: item.nutrition?.biotin || 0,
+          pantothenicAcid: item.nutrition?.pantothenicAcid || 0,
+          cholesterol: item.nutrition?.cholesterol || 0,
+          creatine: item.nutrition?.creatine || 0,
+        },
+        confidence: item.confidence || 0.8,
+        weightConversion: item.weightConversion
+      }));
+
+      const updatedItems = [...foodItems, ...convertedItems];
+      setFoodItems(updatedItems);
+      
+      await saveFoodLogs(selectedDate, updatedItems);
+    } catch (err: any) {
+      console.error('Failed to add food items:', err);
+      setError(err.message || 'Failed to add food items');
     }
   };
 
@@ -1067,108 +1209,13 @@ export const FoodLog: React.FC = () => {
           </Card>
         )}
 
-        {/* Add Food Dialog */}
-        <Dialog open={addFoodOpen} onClose={() => setAddFoodOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Add Food Item</DialogTitle>
-          <form onSubmit={handleSubmit(addFoodItem)}>
-            <DialogContent>
-              <Stack spacing={3} sx={{ pt: 1 }}>
-                <Alert severity="info">
-                  <Typography variant="body2">
-                    Simply type any food (e.g., "grilled chicken breast", "1 medium apple", "homemade pizza slice") 
-                    and our AI will analyze its complete nutritional profile including vitamins and minerals.
-                  </Typography>
-                </Alert>
-
-                <Controller
-                  name="foodQuery"
-                  control={control}
-                  rules={{ required: 'Please enter a food item' }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Food Item"
-                      placeholder="e.g., grilled salmon fillet, 1 cup cooked rice"
-                      error={!!errors.foodQuery}
-                      helperText={errors.foodQuery?.message}
-                      fullWidth
-                    />
-                  )}
-                />
-
-                <Box display="flex" gap={2}>
-                  <Controller
-                    name="quantity"
-                    control={control}
-                    rules={{ required: 'Quantity required', min: 0.1 }}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Quantity"
-                        type="number"
-                        inputProps={{ step: 0.1, min: 0.1 }}
-                        error={!!errors.quantity}
-                        helperText={errors.quantity?.message}
-                        sx={{ flex: 1 }}
-                      />
-                    )}
-                  />
-
-                  <Controller
-                    name="unit"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        label="Unit"
-                        select
-                        sx={{ flex: 1 }}
-                      >
-                        <MenuItem value="serving">serving</MenuItem>
-                        <MenuItem value="cup">cup</MenuItem>
-                        <MenuItem value="oz">oz</MenuItem>
-                        <MenuItem value="g">g</MenuItem>
-                        <MenuItem value="tbsp">tbsp</MenuItem>
-                        <MenuItem value="tsp">tsp</MenuItem>
-                        <MenuItem value="piece">piece</MenuItem>
-                        <MenuItem value="slice">slice</MenuItem>
-                      </TextField>
-                    )}
-                  />
-                </Box>
-
-                <Controller
-                  name="mealType"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Meal Type"
-                      select
-                      fullWidth
-                    >
-                      <MenuItem value="breakfast">🌅 Breakfast</MenuItem>
-                      <MenuItem value="lunch">🌞 Lunch</MenuItem>
-                      <MenuItem value="dinner">🌙 Dinner</MenuItem>
-                      <MenuItem value="snacks">🍎 Snacks</MenuItem>
-                    </TextField>
-                  )}
-                />
-              </Stack>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setAddFoodOpen(false)}>Cancel</Button>
-              <Button 
-                type="submit" 
-                variant="contained"
-                disabled={addingFood}
-                startIcon={addingFood ? <CircularProgress size={20} /> : <AddIcon />}
-              >
-                {addingFood ? 'Analyzing...' : 'Add Food'}
-              </Button>
-            </DialogActions>
-          </form>
-        </Dialog>
+        {/* Smart Food Entry */}
+        <SmartFoodEntry
+          open={addFoodOpen}
+          onClose={() => setAddFoodOpen(false)}
+          onFoodsAdded={handleSmartFoodsAdded}
+          defaultMealType="breakfast"
+        />
       </Box>
     </LocalizationProvider>
   );

@@ -92,6 +92,8 @@ const PersonalFoods: React.FC = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<PersonalFood | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   // Form state for create/edit
   const [formData, setFormData] = useState({
@@ -272,6 +274,58 @@ const PersonalFoods: React.FC = () => {
     }
   };
 
+  const handleImportFromLogs = async (days: number = 30) => {
+    try {
+      setImporting(true);
+      setError('');
+
+      // First, clear existing imported foods for accurate re-import
+      const clearResponse = await fetch('/api/personal-foods/clear-imported', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!clearResponse.ok) {
+        throw new Error('Failed to clear existing imported foods');
+      }
+
+      const clearResult = await clearResponse.json();
+      console.log(`Cleared ${clearResult.data.deletedCount} existing imported foods`);
+
+      // Now import with correct usage counts
+      const response = await fetch('/api/personal-foods/import-from-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ days }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to import foods from logs');
+      }
+
+      const result = await response.json();
+      console.log('Import result:', result);
+      
+      // Show success message
+      setError(''); // Clear any previous errors
+      alert(`Successfully imported ${result.data.imported} foods with accurate usage counts! ${result.data.duplicates} were already in your database.`);
+      
+      // Reload the personal foods list
+      loadPersonalFoods();
+      setImportDialogOpen(false);
+    } catch (error: any) {
+      console.error('Import error:', error);
+      setError(error.message || 'Failed to import foods from logs');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const openEditDialog = (food: PersonalFood) => {
     setSelectedFood(food);
     setFormData({
@@ -280,7 +334,12 @@ const PersonalFoods: React.FC = () => {
       defaultUnit: food.defaultUnit,
       category: food.category,
       notes: food.notes || '',
-      nutrition: food.nutrition,
+      nutrition: {
+        calories: food.nutrition.calories || 0,
+        protein: food.nutrition.protein || 0,
+        carbs: food.nutrition.carbs || 0,
+        fat: food.nutrition.fat || 0,
+      },
     });
     setEditDialogOpen(true);
   };
@@ -337,13 +396,23 @@ const PersonalFoods: React.FC = () => {
         <Typography variant="h4" component="h1">
           Personal Food Database
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setCreateDialogOpen(true)}
-        >
-          Add Custom Food
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={() => setImportDialogOpen(true)}
+            disabled={importing}
+          >
+            {importing ? 'Importing...' : 'Import from Logs'}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            Add Custom Food
+          </Button>
+        </Stack>
       </Box>
 
       {error && (
@@ -355,38 +424,34 @@ const PersonalFoods: React.FC = () => {
       {/* Search and Filter Controls */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                placeholder="Search your foods..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                select
-                label="Category"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-              >
-                {categories.map((category) => (
-                  <MenuItem key={category.value} value={category.value}>
-                    {category.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-          </Grid>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+            <TextField
+              fullWidth
+              placeholder="Search your foods..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TextField
+              fullWidth
+              select
+              label="Category"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+              {categories.map((category) => (
+                <MenuItem key={category.value} value={category.value}>
+                  {category.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
         </CardContent>
       </Card>
 
@@ -486,6 +551,29 @@ const PersonalFoods: React.FC = () => {
           <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleEditFood} variant="contained" disabled={loading}>
             {loading ? <CircularProgress size={20} /> : 'Update Food'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Import from Logs Dialog */}
+      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Import Foods from Logs</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Import foods from your recent food logs into your personal database. This will help populate your database with foods you've already analyzed.
+          </Typography>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            This will import unique foods from your last 30 days of food logs. Duplicate foods will be skipped.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={() => handleImportFromLogs(30)} 
+            variant="contained" 
+            disabled={importing}
+          >
+            {importing ? <CircularProgress size={20} /> : 'Import Foods'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -628,35 +716,31 @@ const FoodForm: React.FC<FoodFormProps> = ({ formData, setFormData, categories, 
         required
       />
       
-      <Grid container spacing={2}>
-        <Grid item xs={6}>
-          <TextField
-            fullWidth
-            label="Default Quantity"
-            type="number"
-            value={formData.defaultQuantity}
-            onChange={(e) => handleChange('defaultQuantity', parseFloat(e.target.value))}
-            required
-            inputProps={{ min: 0.1, step: 0.1 }}
-          />
-        </Grid>
-        <Grid item xs={6}>
-          <TextField
-            fullWidth
-            select
-            label="Unit"
-            value={formData.defaultUnit}
-            onChange={(e) => handleChange('defaultUnit', e.target.value)}
-            required
-          >
-            {units.map((unit) => (
-              <MenuItem key={unit} value={unit}>
-                {unit}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-      </Grid>
+      <Stack direction="row" spacing={2}>
+        <TextField
+          fullWidth
+          label="Default Quantity"
+          type="number"
+          value={formData.defaultQuantity}
+          onChange={(e) => handleChange('defaultQuantity', parseFloat(e.target.value))}
+          required
+          inputProps={{ min: 0.1, step: 0.1 }}
+        />
+        <TextField
+          fullWidth
+          select
+          label="Unit"
+          value={formData.defaultUnit}
+          onChange={(e) => handleChange('defaultUnit', e.target.value)}
+          required
+        >
+          {units.map((unit) => (
+            <MenuItem key={unit} value={unit}>
+              {unit}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
 
       <TextField
         fullWidth
@@ -675,48 +759,43 @@ const FoodForm: React.FC<FoodFormProps> = ({ formData, setFormData, categories, 
 
       <Typography variant="h6">Nutrition Information (per serving)</Typography>
       
-      <Grid container spacing={2}>
-        <Grid item xs={6}>
-          <TextField
-            fullWidth
-            label="Calories"
-            type="number"
-            value={formData.nutrition.calories}
-            onChange={(e) => handleChange('nutrition.calories', parseFloat(e.target.value) || 0)}
-            inputProps={{ min: 0 }}
-          />
-        </Grid>
-        <Grid item xs={6}>
-          <TextField
-            fullWidth
-            label="Protein (g)"
-            type="number"
-            value={formData.nutrition.protein}
-            onChange={(e) => handleChange('nutrition.protein', parseFloat(e.target.value) || 0)}
-            inputProps={{ min: 0, step: 0.1 }}
-          />
-        </Grid>
-        <Grid item xs={6}>
-          <TextField
-            fullWidth
-            label="Carbs (g)"
-            type="number"
-            value={formData.nutrition.carbs}
-            onChange={(e) => handleChange('nutrition.carbs', parseFloat(e.target.value) || 0)}
-            inputProps={{ min: 0, step: 0.1 }}
-          />
-        </Grid>
-        <Grid item xs={6}>
-          <TextField
-            fullWidth
-            label="Fat (g)"
-            type="number"
-            value={formData.nutrition.fat}
-            onChange={(e) => handleChange('nutrition.fat', parseFloat(e.target.value) || 0)}
-            inputProps={{ min: 0, step: 0.1 }}
-          />
-        </Grid>
-      </Grid>
+      <Stack direction="row" spacing={2}>
+        <TextField
+          fullWidth
+          label="Calories"
+          type="number"
+          value={formData.nutrition.calories}
+          onChange={(e) => handleChange('nutrition.calories', parseFloat(e.target.value) || 0)}
+          inputProps={{ min: 0 }}
+        />
+        <TextField
+          fullWidth
+          label="Protein (g)"
+          type="number"
+          value={formData.nutrition.protein}
+          onChange={(e) => handleChange('nutrition.protein', parseFloat(e.target.value) || 0)}
+          inputProps={{ min: 0, step: 0.1 }}
+        />
+      </Stack>
+      
+      <Stack direction="row" spacing={2}>
+        <TextField
+          fullWidth
+          label="Carbs (g)"
+          type="number"
+          value={formData.nutrition.carbs}
+          onChange={(e) => handleChange('nutrition.carbs', parseFloat(e.target.value) || 0)}
+          inputProps={{ min: 0, step: 0.1 }}
+        />
+        <TextField
+          fullWidth
+          label="Fat (g)"
+          type="number"
+          value={formData.nutrition.fat}
+          onChange={(e) => handleChange('nutrition.fat', parseFloat(e.target.value) || 0)}
+          inputProps={{ min: 0, step: 0.1 }}
+        />
+      </Stack>
 
       <TextField
         fullWidth
