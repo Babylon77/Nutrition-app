@@ -354,7 +354,7 @@ export const Profile: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
         Profile
       </Typography>
 
@@ -410,7 +410,7 @@ export const Profile: React.FC = () => {
           <form onSubmit={handleSubmit(onSubmit)}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {/* Basic Information */}
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
                 <Controller
                   name="firstName"
                   control={control}
@@ -422,7 +422,8 @@ export const Profile: React.FC = () => {
                       disabled={!editing}
                       error={!!errors.firstName}
                       helperText={errors.firstName?.message}
-                      sx={{ flex: 1, minWidth: 200 }}
+                      fullWidth
+                      size="small"
                     />
                   )}
                 />
@@ -438,7 +439,8 @@ export const Profile: React.FC = () => {
                       disabled={!editing}
                       error={!!errors.lastName}
                       helperText={errors.lastName?.message}
-                      sx={{ flex: 1, minWidth: 200 }}
+                      fullWidth
+                      size="small"
                     />
                   )}
                 />
@@ -447,16 +449,17 @@ export const Profile: React.FC = () => {
                   label="Email"
                   value={user?.email || ''}
                   disabled
-                  sx={{ flex: 1, minWidth: 200 }}
+                  fullWidth
+                  size="small"
                 />
               </Box>
 
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
                 <Controller
                   name="gender"
                   control={control}
                   render={({ field }) => (
-                    <FormControl sx={{ flex: 1, minWidth: 120 }} disabled={!editing}>
+                    <FormControl fullWidth disabled={!editing} size="small">
                       <InputLabel>Gender</InputLabel>
                       <Select {...field} label="Gender" error={!!errors.gender}>
                         <MenuItem value="male">Male</MenuItem>
@@ -477,13 +480,14 @@ export const Profile: React.FC = () => {
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="Height (feet)"
+                      label="Height (ft)"
                       type="number"
                       disabled={!editing}
                       error={!!errors.heightFeet}
                       helperText={errors.heightFeet?.message}
                       inputProps={{ min: 1, max: 8, step: 1 }}
-                      sx={{ flex: 1, minWidth: 120 }}
+                      fullWidth
+                      size="small"
                     />
                   )}
                 />
@@ -498,98 +502,106 @@ export const Profile: React.FC = () => {
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="Height (inches)"
+                      label="Height (in)"
                       type="number"
                       disabled={!editing}
                       error={!!errors.heightInches}
                       helperText={errors.heightInches?.message}
                       inputProps={{ min: 0, max: 11, step: 1 }}
-                      sx={{ flex: 1, minWidth: 120 }}
+                      fullWidth
+                      size="small"
                     />
                   )}
                 />
               </Box>
 
-              <Controller
-                name="weight"
-                control={control}
-                rules={{ 
-                  min: { value: 50, message: 'Weight must be at least 50 pounds' },
-                  max: { value: 1000, message: 'Weight cannot exceed 1000 pounds' }
-                }}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Weight (pounds)"
-                    type="number"
-                    disabled={!editing}
-                    error={!!errors.weight}
-                    helperText={errors.weight?.message}
-                    inputProps={{ min: 50, max: 1000, step: 0.1 }}
-                    sx={{ flex: 1, minWidth: 200 }}
-                  />
-                )}
-              />
+              <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
+                <Controller
+                  name="weight"
+                  control={control}
+                  rules={{ 
+                    min: { value: 50, message: 'Weight must be at least 50 pounds' },
+                    max: { value: 1000, message: 'Weight cannot exceed 1000 pounds' }
+                  }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Weight (pounds)"
+                      type="number"
+                      disabled={!editing}
+                      error={!!errors.weight}
+                      helperText={errors.weight?.message}
+                      inputProps={{ min: 50, max: 1000, step: 0.1 }}
+                      fullWidth
+                      size="small"
+                    />
+                  )}
+                />
 
-              <Controller
-                name="weightGoal"
-                control={control}
-                rules={{ 
-                  min: { value: 50, message: 'Weight goal must be at least 50 pounds' },
-                  max: { value: 1000, message: 'Weight goal cannot exceed 1000 pounds' }
-                }}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Weight Goal (pounds)"
-                    type="number"
-                    disabled={!editing}
-                    error={!!errors.weightGoal}
-                    helperText={errors.weightGoal?.message}
-                    inputProps={{ min: 50, max: 1000, step: 0.1 }}
-                    sx={{ flex: 1, minWidth: 200 }}
-                  />
-                )}
-              />
+                <Controller
+                  name="weightGoal"
+                  control={control}
+                  rules={{ 
+                    min: { value: 50, message: 'Weight goal must be at least 50 pounds' },
+                    max: { value: 1000, message: 'Weight goal cannot exceed 1000 pounds' }
+                  }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Weight Goal (pounds)"
+                      type="number"
+                      disabled={!editing}
+                      error={!!errors.weightGoal}
+                      helperText={errors.weightGoal?.message}
+                      inputProps={{ min: 50, max: 1000, step: 0.1 }}
+                      fullWidth
+                      size="small"
+                    />
+                  )}
+                />
 
-              <Controller
-                name="weightGoalTimeframe"
-                control={control}
-                rules={{ 
-                  min: { value: 1, message: 'Timeframe must be at least 1 week' },
-                  max: { value: 52, message: 'Timeframe cannot exceed 52 weeks' }
-                }}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Weight Goal Timeframe (weeks)"
-                    type="number"
-                    disabled={!editing}
-                    error={!!errors.weightGoalTimeframe}
-                    helperText={errors.weightGoalTimeframe?.message}
-                    inputProps={{ min: 1, max: 52, step: 1 }}
-                    sx={{ flex: 1, minWidth: 200 }}
-                  />
-                )}
-              />
+                <Controller
+                  name="weightGoalTimeframe"
+                  control={control}
+                  rules={{ 
+                    min: { value: 1, message: 'Timeframe must be at least 1 week' },
+                    max: { value: 52, message: 'Timeframe cannot exceed 52 weeks' }
+                  }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Weight Goal Timeframe (weeks)"
+                      type="number"
+                      disabled={!editing}
+                      error={!!errors.weightGoalTimeframe}
+                      helperText={errors.weightGoalTimeframe?.message}
+                      inputProps={{ min: 1, max: 52, step: 1 }}
+                      fullWidth
+                      size="small"
+                    />
+                  )}
+                />
+              </Box>
 
-              <Controller
-                name="activityLevel"
-                control={control}
-                rules={{ required: 'Activity level is required' }}
-                render={({ field }) => (
-                  <FormControl fullWidth disabled={!editing}>
-                    <InputLabel>Activity Level</InputLabel>
-                    <Select {...field} label="Activity Level" error={!!errors.activityLevel}>
-                      {activityLevels.map((level) => (
-                        <MenuItem key={level.value} value={level.value}>
-                          {level.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
+              <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
+                <Controller
+                  name="activityLevel"
+                  control={control}
+                  rules={{ required: 'Activity level is required' }}
+                  render={({ field }) => (
+                    <FormControl fullWidth disabled={!editing} size="small">
+                      <InputLabel>Activity Level</InputLabel>
+                      <Select {...field} label="Activity Level" error={!!errors.activityLevel}>
+                        {activityLevels.map((level) => (
+                          <MenuItem key={level.value} value={level.value}>
+                            {level.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              </Box>
 
               <Divider />
 

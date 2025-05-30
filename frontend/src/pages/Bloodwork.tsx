@@ -222,8 +222,8 @@ export const Bloodwork: React.FC = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box>
-        <Typography variant="h4" gutterBottom>
-          Health Metrics
+        <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
+          Health Metrics & Bloodwork
         </Typography>
 
         {error && (
@@ -233,11 +233,18 @@ export const Bloodwork: React.FC = () => {
         )}
 
         {/* Action Buttons */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2, 
+          mb: 3 
+        }}>
           <Button
             variant="contained"
             startIcon={<UploadIcon />}
             onClick={() => setUploadDialogOpen(true)}
+            size="small"
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Upload PDF
           </Button>
@@ -245,6 +252,8 @@ export const Bloodwork: React.FC = () => {
             variant="outlined"
             startIcon={<AddIcon />}
             onClick={() => setManualEntryOpen(true)}
+            size="small"
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Manual Entry
           </Button>
@@ -260,20 +269,34 @@ export const Bloodwork: React.FC = () => {
             {bloodworkEntries.map((entry) => (
               <Card key={entry._id}>
                 <CardContent>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                  <Box 
+                    display="flex" 
+                    flexDirection={{ xs: 'column', md: 'row' }}
+                    justifyContent="space-between" 
+                    alignItems={{ xs: 'stretch', md: 'center' }}
+                    gap={2}
+                    mb={2}
+                  >
                     <Box>
-                      <Typography variant="h6">
+                      <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                         {new Date(entry.date).toLocaleDateString()}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
                         {entry.source === 'pdf' ? 'PDF Upload' : 'Manual Entry'} • {entry.labValues.length} values
                       </Typography>
                     </Box>
-                    <Box>
-                      <IconButton onClick={() => viewPDF(entry)}>
+                    <Box display="flex" gap={1}>
+                      <IconButton 
+                        onClick={() => viewPDF(entry)}
+                        size="small"
+                      >
                         <ViewIcon />
                       </IconButton>
-                      <IconButton onClick={() => deleteBloodworkEntry(entry._id)}>
+                      <IconButton 
+                        onClick={() => deleteBloodworkEntry(entry._id)}
+                        size="small"
+                        color="error"
+                      >
                         <DeleteIcon />
                       </IconButton>
                     </Box>
@@ -291,6 +314,7 @@ export const Bloodwork: React.FC = () => {
                           label={`${lab.name}: ${lab.value} ${lab.unit}`}
                           size="small"
                           color={getStatusColor(lab.status || 'normal')}
+                          sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
                         />
                       ))}
                       {entry.labValues.length > 6 && (
@@ -298,6 +322,7 @@ export const Bloodwork: React.FC = () => {
                           label={`+${entry.labValues.length - 6} more`}
                           size="small"
                           variant="outlined"
+                          sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
                         />
                       )}
                     </Box>
@@ -305,36 +330,134 @@ export const Bloodwork: React.FC = () => {
 
                   {/* Categorized Lab Values */}
                   <Box mt={2}>
-                    <Tabs value={0} variant="scrollable" scrollButtons="auto">
-                      <Tab label="All Values" />
+                    <Tabs 
+                      value={0} 
+                      variant="scrollable" 
+                      scrollButtons="auto"
+                      sx={{
+                        '& .MuiTab-root': {
+                          fontSize: { xs: '0.625rem', sm: '0.75rem' },
+                          minWidth: { xs: '60px', sm: '80px' },
+                          px: { xs: 0.5, sm: 1 }
+                        }
+                      }}
+                    >
+                      <Tab 
+                        label={
+                          <>
+                            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                              All Values
+                            </Box>
+                            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                              All
+                            </Box>
+                          </>
+                        } 
+                      />
                       <Tab label="Lipids" />
-                      <Tab label="Glucose" />
+                      <Tab 
+                        label={
+                          <>
+                            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                              Glucose
+                            </Box>
+                            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                              Gluc
+                            </Box>
+                          </>
+                        } 
+                      />
                       <Tab label="Liver" />
-                      <Tab label="Kidney" />
-                      <Tab label="Thyroid" />
-                      <Tab label="Vitamins" />
+                      <Tab 
+                        label={
+                          <>
+                            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                              Kidney
+                            </Box>
+                            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                              Kid
+                            </Box>
+                          </>
+                        } 
+                      />
+                      <Tab 
+                        label={
+                          <>
+                            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                              Thyroid
+                            </Box>
+                            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                              Thy
+                            </Box>
+                          </>
+                        } 
+                      />
+                      <Tab 
+                        label={
+                          <>
+                            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                              Vitamins
+                            </Box>
+                            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                              Vit
+                            </Box>
+                          </>
+                        } 
+                      />
                     </Tabs>
                     
-                    <TableContainer component={Paper} sx={{ mt: 2 }}>
-                      <Table size="small">
+                    {/* Mobile-friendly table with horizontal scroll */}
+                    <TableContainer 
+                      component={Paper} 
+                      sx={{ 
+                        mt: 2,
+                        maxWidth: '100%',
+                        overflowX: 'auto'
+                      }}
+                    >
+                      <Table size="small" sx={{ minWidth: { xs: 280, md: 'auto' } }}>
                         <TableHead>
                           <TableRow>
-                            <TableCell>Test Name</TableCell>
-                            <TableCell align="right">Value</TableCell>
-                            <TableCell align="right">Unit</TableCell>
-                            <TableCell align="right">Reference Range</TableCell>
-                            <TableCell align="center">Status</TableCell>
+                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Test Name</TableCell>
+                            <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Value</TableCell>
+                            <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Unit</TableCell>
+                            <TableCell align="right" sx={{ display: { xs: 'none', sm: 'table-cell' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                              Reference Range
+                            </TableCell>
+                            <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Status</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {entry.labValues.map((lab, index) => (
                             <TableRow key={index}>
                               <TableCell component="th" scope="row">
-                                {lab.name}
+                                <Box>
+                                  <Typography variant="body2" fontWeight="medium">
+                                    {lab.name}
+                                  </Typography>
+                                  {/* Show reference range on mobile under the name */}
+                                  <Typography 
+                                    variant="caption" 
+                                    color="text.secondary"
+                                    sx={{ display: { xs: 'block', sm: 'none' } }}
+                                  >
+                                    Range: {lab.referenceRange || 'N/A'}
+                                  </Typography>
+                                </Box>
                               </TableCell>
-                              <TableCell align="right">{lab.value}</TableCell>
-                              <TableCell align="right">{lab.unit}</TableCell>
-                              <TableCell align="right">{lab.referenceRange || '-'}</TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2" fontWeight="medium">
+                                  {lab.value}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right">
+                                <Typography variant="body2">
+                                  {lab.unit}
+                                </Typography>
+                              </TableCell>
+                              <TableCell align="right" sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
+                                {lab.referenceRange || '-'}
+                              </TableCell>
                               <TableCell align="center">
                                 <Chip
                                   label={lab.status || 'Unknown'}

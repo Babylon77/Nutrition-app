@@ -292,22 +292,33 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
           {/* Input Section */}
           <Box>
             <TextField
-              label="Food Item"
+              fullWidth
+              label="Search for food or start typing..."
               value={currentInput}
               onChange={(e) => setCurrentInput(e.target.value)}
-              placeholder="e.g., grilled salmon, 1 cup rice, homemade pasta"
-              fullWidth
               sx={{ mb: 2 }}
+              data-tour="search-input"
+              autoFocus
             />
 
-            <Box display="flex" gap={2} mb={2}>
+            <Box 
+              display="flex" 
+              gap={2} 
+              mb={2}
+              sx={{
+                flexDirection: { xs: 'column', sm: 'row' },
+                '& .MuiTextField-root': {
+                  flex: { sm: 1 }
+                }
+              }}
+            >
               <TextField
                 label="Quantity"
                 type="number"
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value))}
                 inputProps={{ step: 0.1, min: 0.1 }}
-                sx={{ flex: 1 }}
+                fullWidth
               />
 
               <TextField
@@ -315,7 +326,7 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 select
-                sx={{ flex: 1 }}
+                fullWidth
               >
                 <MenuItem value="serving">serving</MenuItem>
                 <MenuItem value="cup">cup</MenuItem>
@@ -332,7 +343,7 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
                 value={mealType}
                 onChange={(e) => setMealType(e.target.value)}
                 select
-                sx={{ flex: 1 }}
+                fullWidth
               >
                 <MenuItem value="breakfast">🌅 Breakfast</MenuItem>
                 <MenuItem value="lunch">🌞 Lunch</MenuItem>
@@ -355,7 +366,7 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
 
           {/* Personal Food Suggestions */}
           {personalSuggestions.length > 0 && (
-            <Box>
+            <Box data-tour="personal-foods">
               <Typography variant="subtitle2" gutterBottom color="primary">
                 🚀 Your Foods (Ready to Add):
               </Typography>
@@ -380,6 +391,7 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
                             variant="contained"
                             startIcon={<QueueIcon />}
                             onClick={() => addToQueue(true, food._id, food)}
+                            data-tour="add-to-queue"
                           >
                             Add to Queue
                           </Button>
@@ -404,7 +416,7 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
 
           {/* Queue Display */}
           {queue.length > 0 && (
-            <Box>
+            <Box data-tour="food-queue">
               <Box display="flex" alignItems="center" gap={2} mb={2}>
                 <Typography variant="subtitle1" fontWeight="bold">
                   Queue ({queue.length} items)

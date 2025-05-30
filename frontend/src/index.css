@@ -5,9 +5,145 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden; /* Prevent horizontal scroll globally */
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Global responsive container */
+* {
+  box-sizing: border-box;
+}
+
+/* Prevent any element from causing horizontal overflow */
+html, body, #root {
+  max-width: 100vw;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Ensure main content containers don't exceed viewport width */
+.MuiContainer-root {
+  max-width: 100vw !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  width: 100% !important;
+}
+
+/* Make tables responsive by default */
+.MuiTableContainer-root {
+  max-width: 100%;
+  overflow-x: auto;
+  width: 100%;
+}
+
+/* Ensure cards and content don't overflow but allow proper flow */
+.MuiCard-root {
+  max-width: 100%;
+  word-wrap: break-word;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Responsive chip content */
+.MuiChip-root {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+/* Ensure dialog content doesn't cause horizontal overflow */
+.MuiDialog-paper {
+  max-width: calc(100vw - 32px) !important;
+  margin: 16px !important;
+}
+
+/* Better responsive behavior for form elements */
+.MuiFormControl-root {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Ensure text content wraps properly */
+.MuiTypography-root {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Better box behavior for all MUI components */
+.MuiBox-root {
+  min-width: 0;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+
+/* Specific fixes for content cropping issues */
+.MuiCardContent-root {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Ensure all flex containers respect viewport boundaries */
+[class*="MuiBox-root"] {
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+/* Mobile-specific responsive behavior */
+@media (max-width: 768px) {
+  .MuiContainer-root {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  
+  .MuiCard-root {
+    margin: 0 !important;
+  }
+  
+  .MuiButton-root {
+    font-size: 0.75rem !important;
+  }
+  
+  .MuiTypography-h4 {
+    font-size: 1.5rem !important;
+  }
+}
+
+/* iPhone-specific fixes for smaller screens */
+@media (max-width: 390px) {
+  .MuiContainer-root {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+  
+  .MuiCardContent-root {
+    padding: 8px !important;
+  }
+  
+  .MuiTableContainer-root {
+    margin-left: -4px !important;
+    margin-right: -4px !important;
+    width: calc(100% + 8px) !important;
+  }
+  
+  .MuiTab-root {
+    min-width: 50px !important;
+    padding: 6px 4px !important;
+    font-size: 0.5rem !important;
+  }
+  
+  .MuiChip-root {
+    font-size: 0.5rem !important;
+    height: 16px !important;
+  }
+  
+  .MuiButton-root {
+    font-size: 0.625rem !important;
+    padding: 4px 8px !important;
+  }
 }

@@ -91,6 +91,9 @@ export const Layout: React.FC = () => {
             <ListItemButton
               selected={location.pathname === item.path}
               onClick={() => handleNavigate(item.path)}
+              data-tour={item.path === '/analysis' ? 'analytics-tab' : 
+                        item.path === '/bloodwork' ? 'bloodwork-tab' : 
+                        undefined}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />

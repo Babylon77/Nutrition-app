@@ -89,7 +89,6 @@ export const AnalysisPage: React.FC = () => {
       setValue('llmModel', response.currentModel);
     } catch (err: any) {
       console.error('Failed to load available models:', err);
-      // Fallback to default models if API fails
       const fallbackModels = [
         { value: 'gpt-4o-mini', label: 'GPT-4o Mini', description: 'Fast & cost-effective (recommended)' },
         { value: 'gpt-4o', label: 'GPT-4o', description: 'More capable, higher cost' },
@@ -109,13 +108,13 @@ export const AnalysisPage: React.FC = () => {
 
       switch (data.analysisType) {
         case 'nutrition':
-          analysis = await apiService.analyzeNutrition(7); // Last 7 days
+          analysis = await apiService.analyzeNutrition(7);
           break;
         case 'bloodwork':
-          analysis = await apiService.analyzeBloodwork(); // Will use most recent bloodwork
+          analysis = await apiService.analyzeBloodwork();
           break;
         case 'correlation':
-          analysis = await apiService.analyzeCorrelation(30); // 30 days nutrition, auto-select most recent bloodwork
+          analysis = await apiService.analyzeCorrelation(30);
           break;
         default:
           throw new Error('Invalid analysis type');
@@ -180,7 +179,7 @@ export const AnalysisPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
         AI Analysis
       </Typography>
 
@@ -196,8 +195,18 @@ export const AnalysisPage: React.FC = () => {
           variant="contained"
           startIcon={<AnalyticsIcon />}
           onClick={() => setGenerateDialogOpen(true)}
+          size="small"
+          sx={{ 
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+            px: { xs: 1, sm: 2 }
+          }}
         >
-          Generate New Analysis
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+            Generate New Analysis
+          </Box>
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+            New Analysis
+          </Box>
         </Button>
       </Box>
 
@@ -207,18 +216,25 @@ export const AnalysisPage: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : analyses.length > 0 ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, sm: 3 } }}>
           {analyses.map((analysis) => (
             <Card key={analysis._id}>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Box display="flex" alignItems="center" gap={2}>
+              <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+                <Box 
+                  display="flex" 
+                  flexDirection={{ xs: 'column', md: 'row' }}
+                  justifyContent="space-between" 
+                  alignItems={{ xs: 'stretch', md: 'center' }}
+                  gap={{ xs: 1, sm: 2 }}
+                  mb={{ xs: 1, sm: 2 }}
+                >
+                  <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
                     {getAnalysisTypeIcon(analysis.type)}
                     <Box>
-                      <Typography variant="h6">
+                      <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                         {analysis.type.charAt(0).toUpperCase() + analysis.type.slice(1)} Analysis
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
                         {new Date(analysis.date).toLocaleDateString()} • 
                         {analysis.insights.length} insights • 
                         {analysis.recommendations.length} recommendations
@@ -226,54 +242,93 @@ export const AnalysisPage: React.FC = () => {
                       </Typography>
                     </Box>
                   </Box>
-                  <Box display="flex" gap={1}>
+                  <Box 
+                    display="flex" 
+                    gap={{ xs: 0.5, sm: 1 }}
+                    flexDirection={{ xs: 'row', md: 'row' }}
+                    justifyContent={{ xs: 'space-between', md: 'flex-end' }}
+                    alignItems="center"
+                    sx={{ minWidth: { xs: '100%', md: 'auto' } }}
+                  >
                     <Chip
                       label={analysis.type}
                       color={getAnalysisTypeColor(analysis.type) as any}
                       size="small"
+                      sx={{ 
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' },
+                        height: { xs: '20px', sm: '24px' }
+                      }}
                     />
                     <Button
                       size="small"
                       onClick={() => setSelectedAnalysis(analysis)}
+                      variant="outlined"
+                      sx={{ 
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' },
+                        minWidth: { xs: '40px', sm: '60px' },
+                        px: { xs: 0.5, sm: 1 }
+                      }}
                     >
-                      View Details
+                      View
                     </Button>
                     <Button
                       size="small"
                       color="error"
                       onClick={() => deleteAnalysis(analysis._id)}
+                      variant="outlined"
+                      sx={{ 
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' },
+                        minWidth: { xs: '30px', sm: '60px' },
+                        px: { xs: 0.5, sm: 1 }
+                      }}
                     >
-                      Delete
+                      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                        Delete
+                      </Box>
+                      <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                        Del
+                      </Box>
                     </Button>
                   </Box>
                 </Box>
 
                 {/* Summary */}
                 {analysis.summary && (
-                  <Box mb={2}>
-                    <Typography variant="subtitle2" gutterBottom>
+                  <Box mb={{ xs: 1, sm: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                       Summary:
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary" 
+                      sx={{ 
+                        fontStyle: 'italic',
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' },
+                        lineHeight: 1.4
+                      }}
+                    >
                       {analysis.summary}
                     </Typography>
                   </Box>
                 )}
 
                 {/* Key Insights Preview */}
-                <Box mb={2}>
-                  <Typography variant="subtitle2" gutterBottom>
+                <Box mb={{ xs: 1, sm: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Key Insights:
                   </Typography>
-                  <List dense>
+                  <List dense sx={{ py: 0 }}>
                     {analysis.insights.map((insight, index) => (
-                      <ListItem key={index} sx={{ pl: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 32 }}>
+                      <ListItem key={index} sx={{ pl: 0, py: { xs: 0.25, sm: 0.5 } }}>
+                        <ListItemIcon sx={{ minWidth: { xs: 24, sm: 32 } }}>
                           <LightbulbIcon color="primary" fontSize="small" />
                         </ListItemIcon>
                         <ListItemText
                           primary={insight}
-                          primaryTypographyProps={{ variant: 'body2' }}
+                          primaryTypographyProps={{ 
+                            variant: 'body2',
+                            sx: { fontSize: { xs: '0.625rem', sm: '0.75rem' } }
+                          }}
                         />
                       </ListItem>
                     ))}
@@ -282,10 +337,10 @@ export const AnalysisPage: React.FC = () => {
 
                 {/* Top Recommendations Preview */}
                 <Box>
-                  <Typography variant="subtitle2" gutterBottom>
+                  <Typography variant="subtitle2" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Recommendations:
                   </Typography>
-                  <Box display="flex" flexDirection="column" gap={1}>
+                  <Box display="flex" flexDirection="column" gap={{ xs: 0.5, sm: 1 }}>
                     {analysis.recommendations.map((rec, index) => (
                       <Chip
                         key={index}
@@ -293,7 +348,15 @@ export const AnalysisPage: React.FC = () => {
                         size="small"
                         variant="outlined"
                         icon={getPriorityIcon('medium')}
-                        sx={{ alignSelf: 'flex-start', maxWidth: '100%' }}
+                        sx={{ 
+                          alignSelf: 'flex-start', 
+                          maxWidth: '100%',
+                          height: { xs: '20px', sm: '24px' },
+                          fontSize: { xs: '0.625rem', sm: '0.75rem' },
+                          '& .MuiChip-label': {
+                            px: { xs: 0.5, sm: 1 }
+                          }
+                        }}
                       />
                     ))}
                   </Box>
@@ -483,4 +546,6 @@ export const AnalysisPage: React.FC = () => {
       </Dialog>
     </Box>
   );
-}; 
+};
+
+export default AnalysisPage;

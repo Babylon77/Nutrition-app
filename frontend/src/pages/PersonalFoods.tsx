@@ -38,6 +38,7 @@ import {
   Star as StarIcon,
   Category as CategoryIcon,
   AccessTime as AccessTimeIcon,
+  FilterList as FilterListIcon,
 } from '@mui/icons-material';
 
 interface PersonalFood {
@@ -77,7 +78,7 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`personal-foods-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+      {value === index && <Box sx={{ p: { xs: 1, sm: 3 } }}>{children}</Box>}
     </div>
   );
 }
@@ -94,6 +95,7 @@ const PersonalFoods: React.FC = () => {
   const [selectedFood, setSelectedFood] = useState<PersonalFood | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [sortBy, setSortBy] = useState<'recent' | 'alphabetical'>('recent');
 
   // Form state for create/edit
   const [formData, setFormData] = useState({
@@ -131,7 +133,7 @@ const PersonalFoods: React.FC = () => {
 
   useEffect(() => {
     loadPersonalFoods();
-  }, [searchQuery, selectedCategory, currentTab]);
+  }, [searchQuery, selectedCategory, currentTab, sortBy]);
 
   const loadPersonalFoods = async () => {
     try {
@@ -142,11 +144,8 @@ const PersonalFoods: React.FC = () => {
       if (searchQuery) params.append('search', searchQuery);
       if (selectedCategory !== 'all') params.append('category', selectedCategory);
       if (currentTab === 1) params.append('favorites', 'true');
-      
-      let sortBy = 'frequent';
-      if (currentTab === 2) sortBy = 'recent';
-      if (currentTab === 3) sortBy = 'alphabetical';
-      params.append('sort', sortBy);
+      if (sortBy === 'recent') params.append('sort', 'recent');
+      if (sortBy === 'alphabetical') params.append('sort', 'alphabetical');
 
       const response = await fetch(`/api/personal-foods?${params.toString()}`, {
         headers: {
@@ -391,28 +390,78 @@ const PersonalFoods: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box>
+      <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
+        Personal Foods
+      </Typography>
+      <Typography 
+        variant="body1" 
+        color="text.secondary" 
+        gutterBottom 
+        sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' } }}
+      >
+        Your saved foods with quick access and favorites
+      </Typography>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Personal Food Database
-        </Typography>
-        <Stack direction="row" spacing={2}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <FilterListIcon />
           <Button
             variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={() => setImportDialogOpen(true)}
-            disabled={importing}
+            size="small"
+            onClick={() => setSortBy(sortBy === 'recent' ? 'alphabetical' : 'recent')}
+            sx={{ 
+              fontSize: { xs: '0.625rem', sm: '0.75rem' },
+              px: { xs: 0.5, sm: 1 }
+            }}
           >
-            {importing ? 'Importing...' : 'Import from Logs'}
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              Sort: {sortBy === 'recent' ? 'Recent' : 'A-Z'}
+            </Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+              {sortBy === 'recent' ? 'Recent' : 'A-Z'}
+            </Box>
+          </Button>
+        </Box>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 1,
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' }
+        }}>
+          <Button
+            variant="outlined"
+            onClick={() => setImportDialogOpen(true)}
+            size="small"
+            sx={{ 
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              px: { xs: 1, sm: 2 }
+            }}
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              Import from Logs
+            </Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+              Import
+            </Box>
           </Button>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => setCreateDialogOpen(true)}
+            size="small"
+            sx={{ 
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              px: { xs: 1, sm: 2 }
+            }}
           >
-            Add Custom Food
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              Add Personal Food
+            </Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+              Add Food
+            </Box>
           </Button>
-        </Stack>
+        </Box>
       </Box>
 
       {error && (
@@ -423,7 +472,7 @@ const PersonalFoods: React.FC = () => {
 
       {/* Search and Filter Controls */}
       <Card sx={{ mb: 3 }}>
-        <CardContent>
+        <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField
               fullWidth
@@ -460,12 +509,50 @@ const PersonalFoods: React.FC = () => {
         <Tabs
           value={currentTab}
           onChange={(_, newValue) => setCurrentTab(newValue)}
-          variant="fullWidth"
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            '& .MuiTab-root': {
+              fontSize: { xs: '0.625rem', sm: '0.75rem' },
+              minWidth: { xs: '80px', sm: '120px' },
+              px: { xs: 0.5, sm: 1 }
+            }
+          }}
         >
-          <Tab icon={<RestaurantIcon />} label="Most Used" />
-          <Tab icon={<FavoriteIcon />} label="Favorites" />
-          <Tab icon={<AccessTimeIcon />} label="Recent" />
-          <Tab icon={<CategoryIcon />} label="A-Z" />
+          <Tab 
+            icon={<RestaurantIcon fontSize="small" />} 
+            label={
+              <>
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Most Used
+                </Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                  Used
+                </Box>
+              </>
+            } 
+          />
+          <Tab 
+            icon={<FavoriteIcon fontSize="small" />} 
+            label={
+              <>
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Favorites
+                </Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                  Faves
+                </Box>
+              </>
+            } 
+          />
+          <Tab 
+            icon={<AccessTimeIcon fontSize="small" />} 
+            label="Recent" 
+          />
+          <Tab 
+            icon={<CategoryIcon fontSize="small" />} 
+            label="A-Z" 
+          />
         </Tabs>
 
         <TabPanel value={currentTab} index={0}>
@@ -625,10 +712,15 @@ const FoodList: React.FC<FoodListProps> = ({
   return (
     <List>
       {foods.map((food) => (
-        <ListItem key={food.id} divider>
+        <ListItem key={food.id} divider sx={{ 
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          py: 2
+        }}>
           <ListItemText
+            sx={{ mb: { xs: 1, sm: 0 } }}
             primary={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                 <Typography variant="h6">{food.name}</Typography>
                 <Chip
                   label={food.category}
@@ -654,25 +746,44 @@ const FoodList: React.FC<FoodListProps> = ({
               </Stack>
             }
           />
-          <ListItemSecondaryAction>
-            <Stack direction="row" spacing={1}>
-              <Tooltip title={food.isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
-                <IconButton onClick={() => onToggleFavorite(food)}>
-                  {food.isFavorite ? <FavoriteIcon color="warning" /> : <FavoriteBorderIcon />}
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Edit food">
-                <IconButton onClick={() => onEdit(food)}>
-                  <EditIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete food">
-                <IconButton onClick={() => onDelete(food.id)} color="error">
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
-            </Stack>
-          </ListItemSecondaryAction>
+          
+          {/* Mobile-friendly action buttons */}
+          <Box sx={{ 
+            display: 'flex',
+            flexDirection: { xs: 'row', sm: 'row' },
+            gap: { xs: 0.5, sm: 1 },
+            justifyContent: { xs: 'center', sm: 'flex-end' },
+            mt: { xs: 1, sm: 0 }
+          }}>
+            <Tooltip title={food.isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
+              <IconButton 
+                onClick={() => onToggleFavorite(food)}
+                size="small"
+                sx={{ fontSize: { xs: '0.75rem', sm: '1rem' } }}
+              >
+                {food.isFavorite ? <FavoriteIcon color="warning" /> : <FavoriteBorderIcon />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Edit food">
+              <IconButton 
+                onClick={() => onEdit(food)}
+                size="small"
+                sx={{ fontSize: { xs: '0.75rem', sm: '1rem' } }}
+              >
+                <EditIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete food">
+              <IconButton 
+                onClick={() => onDelete(food.id)} 
+                color="error"
+                size="small"
+                sx={{ fontSize: { xs: '0.75rem', sm: '1rem' } }}
+              >
+                <DeleteIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </ListItem>
       ))}
     </List>

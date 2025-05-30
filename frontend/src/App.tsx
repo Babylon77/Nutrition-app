@@ -10,9 +10,10 @@ import { Dashboard } from './pages/Dashboard';
 import { FoodLog } from './pages/FoodLog';
 import PersonalFoods from './pages/PersonalFoods';
 import { Bloodwork } from './pages/Bloodwork';
-import { AnalysisPage } from './pages/Analysis';
+import AnalysisPage from './pages/Analysis';
 import { Profile } from './pages/Profile';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { TutorialProvider, TutorialHelpButton } from './components/TutorialSystem';
 
 const theme = createTheme({
   palette: {
@@ -44,26 +45,54 @@ const theme = createTheme({
   },
 });
 
+function AppContent() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={
+            <>
+              <Dashboard />
+              <TutorialHelpButton tutorialType="firstTime" />
+            </>
+          } />
+          <Route path="food-log" element={
+            <>
+              <FoodLog />
+              <TutorialHelpButton tutorialType="smartEntry" />
+            </>
+          } />
+          <Route path="personal-foods" element={<PersonalFoods />} />
+          <Route path="bloodwork" element={
+            <>
+              <Bloodwork />
+              <TutorialHelpButton tutorialType="bloodwork" />
+            </>
+          } />
+          <Route path="analysis" element={
+            <>
+              <AnalysisPage />
+              <TutorialHelpButton tutorialType="analytics" />
+            </>
+          } />
+          <Route path="profile" element={<Profile />} />
+        </Route>
+      </Routes>
+    </Router>
+  );
+}
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="food-log" element={<FoodLog />} />
-              <Route path="personal-foods" element={<PersonalFoods />} />
-              <Route path="bloodwork" element={<Bloodwork />} />
-              <Route path="analysis" element={<AnalysisPage />} />
-              <Route path="profile" element={<Profile />} />
-            </Route>
-          </Routes>
-        </Router>
+        <TutorialProvider>
+          <AppContent />
+        </TutorialProvider>
       </AuthProvider>
     </ThemeProvider>
   );

@@ -102,32 +102,43 @@ router.get('/summary', protect, asyncHandler(async (req, res) => {
 
   const daysNum = parseInt(days as string);
   
-  // Generate array of date strings for the range
-  const dateStrings = [];
-  for (let i = 0; i < daysNum; i++) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    dateStrings.push(`${year}-${month}-${day}`);
-  }
+  // Calculate date range for query
+  const endDate = new Date();
+  endDate.setHours(23, 59, 59, 999); // End of today
+  
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - daysNum + 1); // Include today
+  startDate.setHours(0, 0, 0, 0); // Start of first day
 
   const query = {
     userId: req.user.id,
-    date: { $in: dateStrings }  // Use $in with array of date strings
+    date: { 
+      $gte: startDate,
+      $lte: endDate 
+    }
   };
 
+  console.log(`Querying food logs from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
   const foodLogs = await FoodLog.find(query);
+  console.log(`Found ${foodLogs.length} food logs for summary`);
 
   // Get unique dates that have logs
-  const uniqueDates = [...new Set(foodLogs.map(log => log.date))];
+  const uniqueDates = [...new Set(foodLogs.map(log => {
+    const logDate = new Date(log.date);
+    return logDate.toDateString();
+  }))];
   const daysLogged = uniqueDates.length;
+
+  console.log(`Days with logs: ${daysLogged}`, uniqueDates);
 
   // Calculate totals
   const summary = {
     daysLogged,
-    totalCalories: foodLogs.reduce((sum, log) => sum + log.totalCalories, 0),
+    totalCalories: foodLogs.reduce((sum, log) => {
+      console.log(`Log calories: ${log.totalCalories}`);
+      return sum + log.totalCalories;
+    }, 0),
     totalProtein: foodLogs.reduce((sum, log) => sum + log.totalProtein, 0),
     totalCarbs: foodLogs.reduce((sum, log) => sum + log.totalCarbs, 0),
     totalFat: foodLogs.reduce((sum, log) => sum + log.totalFat, 0),
@@ -155,6 +166,8 @@ router.get('/summary', protect, asyncHandler(async (req, res) => {
       summary.mealTypeBreakdown[log.mealType]++;
     });
   }
+
+  console.log('Summary result:', summary);
 
   res.json({
     success: true,
