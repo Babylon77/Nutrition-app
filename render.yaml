@@ -1,12 +1,12 @@
 services:
-  # Production Environment (MVP v1.x)
+  # Production Environment (MVP v1.x + V2 when ready)
   - type: web
-    name: nutrition-app-production
+    name: nutrition-app
     env: node
     buildCommand: npm run build:all
     startCommand: npm run start:production
     repo: https://github.com/Babylon77/Nutrition-app.git
-    branch: master  # Stable MVP branch
+    branch: master  # Stable releases only
     autoDeploy: true
     envVars:
       - key: NODE_ENV
@@ -15,29 +15,6 @@ services:
         value: 10000
       - key: MONGODB_URI
         sync: false  # Set in Render dashboard
-      - key: JWT_SECRET
-        sync: false  # Set in Render dashboard
-      - key: JWT_EXPIRE
-        value: 7d
-      - key: OPENAI_API_KEY
-        sync: false  # Set in Render dashboard
-
-  # Staging Environment (V2 Development)
-  - type: web
-    name: nutrition-app-staging
-    env: node
-    buildCommand: npm run build:all
-    startCommand: npm run start:production
-    repo: https://github.com/Babylon77/Nutrition-app.git
-    branch: develop  # V2 development branch
-    autoDeploy: true
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 10000
-      - key: MONGODB_URI
-        sync: false  # Set in Render dashboard (separate staging DB)
       - key: JWT_SECRET
         sync: false  # Set in Render dashboard
       - key: JWT_EXPIRE

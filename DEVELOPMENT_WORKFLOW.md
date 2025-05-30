@@ -75,23 +75,17 @@ git pull origin master
 
 ### **Production Environment**
 - **Branch**: `master`
-- **URL**: `https://nutrition-app-production.onrender.com`
+- **URL**: `https://nutrition-app-production.onrender.com` (your current live app)
 - **Database**: `nutrition-app` (live user data)
 - **Users**: Real users, paying customers
 - **Stability**: Must be rock solid
 
-### **Staging Environment** 
-- **Branch**: `develop`
-- **URL**: `https://nutrition-app-staging.onrender.com`
-- **Database**: `nutrition-app-staging` (test data)
+### **Local Development Environment** 
+- **Branch**: `develop` or `feature/*`
+- **URL**: `http://localhost:3000` (frontend) + `http://localhost:5001` (backend)
+- **Database**: `nutrition-app-dev` (local test data) OR same as production (your choice)
 - **Users**: You, testers, stakeholders
-- **Purpose**: Integration testing, demos, user acceptance testing
-
-### **Local Development**
-- **Branch**: Any (feature branches, develop)
-- **URL**: `http://localhost:3000`
-- **Database**: Local MongoDB or separate dev database
-- **Purpose**: Feature development, debugging
+- **Purpose**: V2 feature development, integration testing, demos
 
 ## Database Strategy 💾
 
@@ -215,31 +209,29 @@ NODE_ENV=production  # (still uses production build)
 
 ## Quick Commands 📝
 
-### **Switch to Development**
+### **Local V2 Development**
 ```bash
+# Switch to development
 git checkout develop
-npm run dev
+git pull origin develop
+
+# Start local servers
+npm run dev  # This starts both frontend and backend
+
+# Work on features...
+# Test locally at http://localhost:3000
 ```
 
-### **Check Current Branch Status**
+### **When Ready for Production**
 ```bash
-git branch -a
+# Ensure develop is ready
+git checkout develop
 git status
-```
 
-### **Deploy to Staging**
-```bash
-git checkout develop
-git push origin develop  # Auto-deploys
-```
-
-### **Deploy to Production**
-```bash
-# Create PR: develop → master via GitHub
-# Or direct merge if you're confident:
+# Merge to master and deploy
 git checkout master
 git merge develop
-git push origin master  # Auto-deploys
+git push origin master  # Auto-deploys to production
 ```
 
 ## Benefits of This Approach ✅
