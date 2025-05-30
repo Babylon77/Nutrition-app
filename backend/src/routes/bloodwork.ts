@@ -61,19 +61,40 @@ router.post('/upload', protect, upload.single('pdf'), asyncHandler(async (req, r
 
   const { testDate, labName, doctorName, notes } = req.body;
 
-  // Use current date if testDate is not provided
-  const finalTestDate = testDate ? new Date(testDate) : new Date();
-
   try {
     // Parse PDF
     const parsedResult = await pdfService.parsePDF(req.file.path);
+
+    // Use extracted metadata or fallback to request body/defaults
+    let finalTestDate: Date;
+    
+    if (parsedResult.metadata?.testDate) {
+      // Parse the extracted date string properly to avoid timezone issues
+      const dateStr = parsedResult.metadata.testDate;
+      
+      // If it's in YYYY-MM-DD format, parse it as local date
+      if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        finalTestDate = new Date(year, month - 1, day); // Month is 0-indexed
+      } else {
+        // For other formats, try normal parsing
+        finalTestDate = new Date(dateStr);
+      }
+    } else if (testDate) {
+      finalTestDate = new Date(testDate);
+    } else {
+      finalTestDate = new Date();
+    }
+    
+    const finalLabName = parsedResult.metadata?.labName || labName;
+    const finalDoctorName = parsedResult.metadata?.doctorName || doctorName;
 
     // Create bloodwork record
     const bloodwork = await Bloodwork.create({
       userId: req.user.id,
       testDate: finalTestDate,
-      labName,
-      doctorName,
+      labName: finalLabName,
+      doctorName: finalDoctorName,
       uploadedFile: {
         filename: req.file.filename,
         originalName: req.file.originalname,
@@ -91,7 +112,9 @@ router.post('/upload', protect, upload.single('pdf'), asyncHandler(async (req, r
       success: true,
       data: bloodwork,
       parseConfidence: parsedResult.confidence,
-      extractedValues: parsedResult.labValues.length
+      extractedValues: parsedResult.labValues.length,
+      extractionMethod: parsedResult.extractionMethod,
+      extractedMetadata: parsedResult.metadata
     });
 
   } catch (error) {

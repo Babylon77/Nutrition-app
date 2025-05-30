@@ -9,6 +9,7 @@ import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { FoodLog } from './pages/FoodLog';
 import PersonalFoods from './pages/PersonalFoods';
+import { SupplementsNew } from './pages/SupplementsNew';
 import { Bloodwork } from './pages/Bloodwork';
 import AnalysisPage from './pages/Analysis';
 import { Profile } from './pages/Profile';
@@ -66,6 +67,7 @@ function AppContent() {
             </>
           } />
           <Route path="personal-foods" element={<PersonalFoods />} />
+          <Route path="supplements" element={<SupplementsNew />} />
           <Route path="bloodwork" element={
             <>
               <Bloodwork />

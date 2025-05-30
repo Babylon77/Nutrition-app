@@ -135,17 +135,17 @@ class ApiService {
   }
 
   // Bloodwork endpoints
-  async uploadBloodworkPDF(file: File): Promise<BloodworkEntry> {
+  async uploadBloodworkPDF(file: File): Promise<any> {
     const formData = new FormData();
     formData.append('pdf', file);
     
-    const response: AxiosResponse<ApiResponse<BloodworkEntry>> = 
+    const response: AxiosResponse<any> = 
       await this.api.post('/bloodwork/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-    return response.data.data!;
+    return response.data; // Return full response including metadata
   }
 
   async createBloodworkEntry(date: string, labValues: LabValue[]): Promise<BloodworkEntry> {
@@ -240,6 +240,40 @@ class ApiService {
   async getAnalysisModels(): Promise<{ models: { value: string; label: string; description: string }[]; currentModel: string }> {
     const response: AxiosResponse<ApiResponse<{ models: { value: string; label: string; description: string }[]; currentModel: string }>> = 
       await this.api.get('/analysis/models');
+    return response.data.data!;
+  }
+
+  // Supplement endpoints
+  async analyzeSupplementWithAI(query: string): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = 
+      await this.api.post('/supplements/analyze', { query });
+    return response.data.data!;
+  }
+
+  async logSupplement(data: {
+    date: string;
+    timeOfDay: string;
+    supplements: any[];
+    notes?: string;
+  }): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = 
+      await this.api.post('/supplements/log', data);
+    return response.data.data!;
+  }
+
+  async getSupplementsForDate(date: string): Promise<any[]> {
+    const response: AxiosResponse<ApiResponse<any[]>> = 
+      await this.api.get(`/supplements/date/${date}`);
+    return response.data.data!;
+  }
+
+  async deleteSupplementLog(logId: string): Promise<void> {
+    await this.api.delete(`/supplements/logs/${logId}`);
+  }
+
+  async getSupplementSummary(days = 30): Promise<any> {
+    const response: AxiosResponse<ApiResponse<any>> = 
+      await this.api.get(`/supplements/summary?days=${days}`);
     return response.data.data!;
   }
 }
@@ -343,4 +377,26 @@ export const analysis = {
 
   // Get analysis models
   getAnalysisModels: () => apiService.getAnalysisModels(),
+};
+
+export const supplements = {
+  analyzeSupplementWithAI: (query: string) => 
+    apiService.analyzeSupplementWithAI(query),
+  
+  logSupplement: (data: {
+    date: string;
+    timeOfDay: string;
+    supplements: any[];
+    notes?: string;
+  }) => 
+    apiService.logSupplement(data),
+  
+  getSupplementsForDate: (date: string) => 
+    apiService.getSupplementsForDate(date),
+  
+  deleteSupplementLog: (logId: string) => 
+    apiService.deleteSupplementLog(logId),
+  
+  getSupplementSummary: (days = 30) => 
+    apiService.getSupplementSummary(days),
 }; 

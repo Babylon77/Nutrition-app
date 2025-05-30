@@ -105,7 +105,7 @@ class AIService {
     }
   }
 
-  private async callOpenAI(prompt: string, maxTokens: number = 2000): Promise<string> {
+  async callOpenAI(prompt: string, maxTokens: number = 2000): Promise<string> {
     try {
       if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'your-openai-api-key-here') {
         logger.error('OpenAI API key is not configured or is the default placeholder');
@@ -176,6 +176,28 @@ class AIService {
   }> {
     // Calculate actual data period by counting unique dates
     const foodLogs = nutritionData.foodLogs || [];
+    const supplementRegimens = nutritionData.supplementRegimens || [];
+    const supplementIntakes = nutritionData.supplementIntakes || [];
+    
+    // Log food data for debugging
+    logger.info('NUTRITION ANALYSIS DEBUG - Food data:', {
+      foodLogsCount: foodLogs.length,
+      totalCalories: nutritionData.totalCalories,
+      totalProtein: nutritionData.totalProtein,
+      totalCarbs: nutritionData.totalCarbs,
+      totalFat: nutritionData.totalFat,
+      supplementRegimenCount: supplementRegimens.length,
+      supplementIntakeCount: supplementIntakes.length,
+      foodSample: foodLogs.slice(0, 2).map((log: any) => ({
+        date: log.date,
+        mealType: log.mealType,
+        totalCalories: log.totalCalories,
+        totalProtein: log.totalProtein,
+        foodsCount: log.foods?.length || 0,
+        firstFood: log.foods?.[0]?.name || 'No foods'
+      }))
+    });
+    
     const uniqueDates = [...new Set(foodLogs.map((log: any) => 
       new Date(log.date).toDateString()
     ))];
@@ -186,13 +208,53 @@ class AIService {
     } : null;
     
     const prompt = `
-Analyze the following nutrition data and provide comprehensive insights and recommendations:
+Analyze the following comprehensive nutrition data including both food intake and supplement regimens:
 
-${JSON.stringify(nutritionData, null, 2)}
+CALCULATED NUTRITION TOTALS (${actualDays} day${actualDays !== 1 ? 's' : ''}):
+- Total Calories: ${nutritionData.totalCalories || 0} kcal (${actualDays > 0 ? Math.round((nutritionData.totalCalories || 0) / actualDays) : 0} kcal/day average)
+- Total Protein: ${nutritionData.totalProtein || 0}g (${actualDays > 0 ? Math.round((nutritionData.totalProtein || 0) / actualDays) : 0}g/day average)
+- Total Carbohydrates: ${nutritionData.totalCarbs || 0}g (${actualDays > 0 ? Math.round((nutritionData.totalCarbs || 0) / actualDays) : 0}g/day average)
+- Total Fat: ${nutritionData.totalFat || 0}g (${actualDays > 0 ? Math.round((nutritionData.totalFat || 0) / actualDays) : 0}g/day average)
+- Total Fiber: ${nutritionData.totalFiber || 0}g (${actualDays > 0 ? Math.round((nutritionData.totalFiber || 0) / actualDays) : 0}g/day average)
+- Total Sugar: ${nutritionData.totalSugar || 0}g (${actualDays > 0 ? Math.round((nutritionData.totalSugar || 0) / actualDays) : 0}g/day average)
+- Total Sodium: ${nutritionData.totalSodium || 0}mg (${actualDays > 0 ? Math.round((nutritionData.totalSodium || 0) / actualDays) : 0}mg/day average)
+- Total Potassium: ${nutritionData.totalPotassium || 0}mg (${actualDays > 0 ? Math.round((nutritionData.totalPotassium || 0) / actualDays) : 0}mg/day average)
+
+FOOD LOGS SUMMARY:
+- Food logs analyzed: ${foodLogs.length} entries across ${actualDays} day${actualDays !== 1 ? 's' : ''}
+- Date range: ${dateRange ? `${dateRange.start.toDateString()} to ${dateRange.end.toDateString()}` : 'Single day analysis'}
+- Meal distribution: ${foodLogs.map((log: any) => `${log.mealType}(${log.totalCalories}cal)`).join(', ')}
+
+USER PROFILE:
+${JSON.stringify(nutritionData.userProfile, null, 2)}
+
+SUPPLEMENT DATA:
+Active Supplement Regimens: ${supplementRegimens.length} supplements
+${JSON.stringify(supplementRegimens.map((reg: any) => ({
+  name: reg.name,
+  brand: reg.brand,
+  dosage: reg.dosage,
+  unit: reg.unit,
+  frequency: reg.frequency,
+  timeOfDay: reg.timeOfDay,
+  notes: reg.notes,
+  instructions: reg.instructions
+})), null, 2)}
+
+Recent Supplement Intake: ${supplementIntakes.length} recorded intakes
+${JSON.stringify(supplementIntakes.map((intake: any) => ({
+  supplementName: intake.supplementName,
+  dosage: intake.dosage,
+  unit: intake.unit,
+  dateTaken: intake.dateTaken,
+  timeOfDay: intake.timeOfDay
+})), null, 2)}
 
 IMPORTANT CONTEXT:
-- Data covers ${actualDays} day${actualDays !== 1 ? 's' : ''} of food logging
+- Food data covers ${actualDays} day${actualDays !== 1 ? 's' : ''} of logging
 - Date range: ${dateRange ? `${dateRange.start.toDateString()} to ${dateRange.end.toDateString()}` : 'Single day analysis'}
+- User has ${supplementRegimens.length} active supplement regimens
+- Recent supplement compliance: ${supplementIntakes.length} recorded intakes
 - Adjust analysis depth and confidence based on available data period
 - For single-day analysis: focus on daily patterns and immediate recommendations
 - For multi-day analysis: identify trends and patterns over time
@@ -224,32 +286,44 @@ Please provide a JSON response with the following structure:
   "insights": ["insight1", "insight2", "insight3", "insight4", "insight5"],
   "recommendations": ["recommendation1", "recommendation2", "recommendation3", "recommendation4", "recommendation5"],
   "confidence": 85,
-  "summary": "A brief 2-3 sentence overview of the nutritional status for the ${actualDays}-day period",
-  "detailedAnalysis": "A detailed 3-4 paragraph narrative analysis covering macro/micronutrient balance, fiber and sugar intake patterns, meal timing, potential deficiencies, and overall nutritional health assessment"
+  "summary": "A brief 2-3 sentence overview of the comprehensive nutritional status including both food and supplement intake for the ${actualDays}-day period",
+  "detailedAnalysis": "A detailed 3-4 paragraph narrative analysis covering food macro/micronutrient balance, supplement regimen effectiveness, potential nutrient gaps or overlaps, overall nutritional health assessment, and integrated recommendations"
 }
 
-ANALYSIS FOCUS AREAS:
-- Macronutrient balance (protein, carbs, fat ratios)
+COMPREHENSIVE ANALYSIS FOCUS AREAS:
+- Food macronutrient balance (protein, carbs, fat ratios) from dietary sources
+- Supplement regimen effectiveness and appropriateness 
+- Total nutrient intake combining food + supplements (avoid double-counting)
+- Potential nutrient gaps that supplements are addressing vs. remaining deficiencies
+- Supplement timing and absorption optimization recommendations
+- Drug-nutrient and supplement-food interactions
 - Caloric intake relative to weight goals AND activity level (if specified)
 - Fiber intake: adequacy, sources, and digestive health implications
 - Sugar breakdown: added vs natural sugars, timing, and metabolic impact
-- Micronutrient density and potential gaps (vitamins, minerals)
-- Meal timing and distribution throughout the day
-- Hydration and electrolyte balance (sodium, potassium)
-- Food variety and nutritional quality
+- Micronutrient density from food sources and supplement contributions
+- Meal timing and distribution throughout the day + supplement scheduling
+- Hydration and electrolyte balance (sodium, potassium) from all sources
+- Food variety, supplement necessity, and overall nutritional quality
 - Energy balance relative to estimated needs, activity level, and weight goals
 
-IMPORTANT GUIDELINES:
+CRITICAL GUIDELINES:
 - Return ONLY valid JSON, no markdown formatting or code blocks
 - Confidence should be 30-50 for single day, 60-80 for 2-7 days, 80-95 for week+ data
 - Provide exactly 5 insights and 5 recommendations
-- Be specific about fiber and sugar intake (separate from total carbs)
+- Use the CALCULATED NUTRITION TOTALS provided above - do not manually recalculate from raw food data
+- Base your analysis on the daily averages: ${actualDays > 0 ? Math.round((nutritionData.totalCalories || 0) / actualDays) : 0} cal/day, ${actualDays > 0 ? Math.round((nutritionData.totalProtein || 0) / actualDays) : 0}g protein/day, etc.
+- Consider BOTH food and supplement sources for all nutrients
+- Identify any redundant supplementation or nutrient gaps
+- Be specific about supplement timing and food interactions
 - Include specific nutritional values and percentages when relevant
 - Adapt language based on data period (daily vs weekly patterns)
 - For limited data: focus on immediate actionable improvements
 - For extensive data: identify trends and long-term optimization strategies
 - If weight goals are specified, prioritize recommendations that support those goals
 - If activity level is specified, factor it into calorie recommendations and energy balance assessments
+- Address supplement-food synergies and potential conflicts
+- Recommend supplement timing optimizations (with/without food, spacing, etc.)
+- Always reference the provided calculated totals, not individual food items
 `;
 
     let response: string = '';
@@ -285,7 +359,7 @@ IMPORTANT GUIDELINES:
         cleanedResponse = cleanedResponse.substring(jsonStartIndex, jsonEndIndex + 1);
       }
       
-      logger.info('Attempting to parse AI response for nutrition analysis...');
+      logger.info('Attempting to parse AI response for comprehensive nutrition analysis...');
       const parsed = JSON.parse(cleanedResponse);
       
       // Convert confidence from percentage (0-100) to decimal (0-1)
@@ -297,22 +371,22 @@ IMPORTANT GUIDELINES:
         insights: Array.isArray(parsed.insights) ? parsed.insights.slice(0, 5) : ['Unable to generate insights'],
         recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations.slice(0, 5) : ['Unable to generate recommendations'],
         confidence,
-        summary: parsed.summary || 'Nutritional analysis completed with available data.',
-        detailedAnalysis: parsed.detailedAnalysis || 'Detailed analysis is currently unavailable. Please ensure sufficient nutritional data is logged for comprehensive insights.',
+        summary: parsed.summary || 'Comprehensive nutritional analysis completed with available food and supplement data.',
+        detailedAnalysis: parsed.detailedAnalysis || 'Detailed analysis includes both dietary intake and supplement regimen effectiveness. Consider working with a registered dietitian for personalized optimization.',
         llmModel: this.currentModel
       };
     } catch (error) {
-      logger.error('Failed to parse AI response for nutrition analysis:', error);
+      logger.error('Failed to parse AI response for comprehensive nutrition analysis:', error);
       logger.error('Raw AI response (first 500 chars):', response?.substring(0, 500));
       logger.error('Cleaned response (first 500 chars):', cleanedResponse?.substring(0, 500));
       
       // Fallback response
       return {
-        insights: ['Unable to analyze nutrition data at this time', 'Please ensure you have logged sufficient food entries', 'Try again later or consult with a nutritionist', 'Check your internet connection', 'Consider upgrading your analysis plan'],
-        recommendations: ['Log more diverse food entries for better analysis', 'Include all meals and snacks in your food diary', 'Ensure accurate portion sizes', 'Try again in a few minutes', 'Contact support if the issue persists'],
+        insights: ['Unable to analyze comprehensive nutrition data at this time', 'Please ensure you have logged sufficient food entries', 'Consider reviewing your supplement regimen with a healthcare provider', 'Try again later or check your internet connection', 'Both food and supplement tracking contribute to optimal health'],
+        recommendations: ['Log more diverse food entries for better analysis', 'Review supplement timing with meals for better absorption', 'Ensure accurate portion sizes and supplement dosages', 'Try again in a few minutes', 'Consider consulting with a registered dietitian'],
         confidence: 0.1,
-        summary: 'Analysis temporarily unavailable due to technical issues.',
-        detailedAnalysis: 'We were unable to generate a detailed nutritional analysis at this time. This may be due to insufficient data, temporary service issues, or connectivity problems. Please ensure you have logged at least 3-7 days of comprehensive food entries including all meals and snacks with accurate portion sizes. If you continue to experience issues, please try again later or contact our support team.',
+        summary: 'Comprehensive analysis temporarily unavailable due to technical issues.',
+        detailedAnalysis: 'We were unable to generate a detailed nutritional analysis including both food and supplement data at this time. For optimal health insights, ensure you have logged comprehensive food entries and accurate supplement regimens. A registered dietitian can help you optimize both your diet and supplement strategy based on your individual needs and health goals.',
         llmModel: this.currentModel
       };
     }
@@ -326,30 +400,66 @@ IMPORTANT GUIDELINES:
     detailedAnalysis: string;
     llmModel: string;
   }> {
+    const bloodworkEntries = Array.isArray(bloodworkData.bloodwork) ? bloodworkData.bloodwork : [bloodworkData.bloodwork];
+    const entryCount = bloodworkEntries.length;
+    const isMultipleTests = entryCount > 1;
+    
     const prompt = `
-Analyze the following bloodwork data and provide comprehensive health insights and recommendations:
+Analyze the following comprehensive bloodwork data ${isMultipleTests ? `across ${entryCount} test results` : 'from a single test'} and provide detailed health insights and recommendations:
 
-${JSON.stringify(bloodworkData, null, 2)}
+BLOODWORK DATA (${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}):
+${JSON.stringify(bloodworkEntries.map((entry: any) => ({
+  testDate: entry.testDate,
+  labName: entry.labName,
+  doctorName: entry.doctorName,
+  labValues: entry.labValues.map((lab: any) => ({
+    name: lab.name,
+    value: lab.value,
+    unit: lab.unit,
+    referenceRange: lab.referenceRange,
+    status: lab.status
+  }))
+})), null, 2)}
+
+USER PROFILE:
+${JSON.stringify(bloodworkData.userProfile, null, 2)}
+
+${isMultipleTests ? `
+TREND ANALYSIS CONTEXT:
+- Multiple test results available spanning from ${new Date(bloodworkEntries[bloodworkEntries.length - 1].testDate).toDateString()} to ${new Date(bloodworkEntries[0].testDate).toDateString()}
+- Focus on trends, improvements, and changes over time
+- Identify patterns and trajectory of key biomarkers
+- Consider whether values are moving in positive or negative directions
+- Assess effectiveness of any interventions between tests
+` : `
+SINGLE TEST ANALYSIS CONTEXT:
+- Single test result analysis
+- Focus on current status relative to reference ranges
+- Provide baseline assessment for future monitoring
+- Recommend appropriate follow-up timing
+`}
 
 Please provide a JSON response with the following structure:
 {
   "insights": ["insight1", "insight2", "insight3", "insight4", "insight5"],
   "recommendations": ["recommendation1", "recommendation2", "recommendation3", "recommendation4", "recommendation5"],
   "confidence": 85,
-  "summary": "A brief 2-3 sentence overview of the bloodwork results and overall health status",
-  "detailedAnalysis": "A detailed 3-4 paragraph narrative analysis covering lab value interpretation, trends, risk factors, and health implications with specific reference ranges and recommendations"
+  "summary": "A brief 2-3 sentence overview of the ${isMultipleTests ? 'bloodwork trends and' : ''} overall health status ${isMultipleTests ? 'across multiple tests' : 'from this test'}",
+  "detailedAnalysis": "A detailed 3-4 paragraph narrative analysis covering lab value interpretation${isMultipleTests ? ', trends over time' : ''}, risk factors, health implications with specific reference ranges and ${isMultipleTests ? 'trend-based' : ''} recommendations"
 }
 
 Important: 
 - Return ONLY valid JSON, no markdown formatting or code blocks
 - Confidence should be a number between 0-100 (percentage)
+- ${isMultipleTests ? 'Higher confidence due to multiple data points and trend analysis' : 'Moderate confidence based on single test result'}
 - Provide exactly 5 insights and 5 recommendations
-- Focus on lab values, trends, and health implications
+- Focus on lab values${isMultipleTests ? ', trends,' : ''} and health implications
 - Be specific and actionable in your recommendations
 - Include specific lab values and reference ranges when relevant
+- ${isMultipleTests ? 'Emphasize trend analysis and changes over time' : 'Focus on current status and future monitoring'}
 - Always recommend consulting healthcare professionals for medical advice
-- Summary should highlight key findings
-- Detailed analysis should be educational and comprehensive
+- Summary should highlight key findings${isMultipleTests ? ' and trends' : ''}
+- Detailed analysis should be educational and comprehensive${isMultipleTests ? ' with trend interpretation' : ''}
 `;
 
     let response: string = '';
@@ -385,34 +495,34 @@ Important:
         cleanedResponse = cleanedResponse.substring(jsonStartIndex, jsonEndIndex + 1);
       }
       
-      logger.info('Attempting to parse AI response for bloodwork analysis...');
+      logger.info(`Attempting to parse AI response for ${isMultipleTests ? 'multi-test' : 'single'} bloodwork analysis...`);
       const parsed = JSON.parse(cleanedResponse);
       
       // Convert confidence from percentage (0-100) to decimal (0-1)
-      const confidence = typeof parsed.confidence === 'number' 
-        ? Math.min(Math.max(parsed.confidence / 100, 0), 1) 
-        : 0.8; // Default fallback
+      // Higher confidence for multiple tests due to trend data
+      const baseConfidence = typeof parsed.confidence === 'number' ? parsed.confidence : (isMultipleTests ? 85 : 75);
+      const confidence = Math.min(Math.max(baseConfidence / 100, 0), 1);
       
       return {
         insights: Array.isArray(parsed.insights) ? parsed.insights.slice(0, 5) : ['Unable to generate insights'],
         recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations.slice(0, 5) : ['Unable to generate recommendations'],
         confidence,
-        summary: parsed.summary || 'Bloodwork analysis completed with available data.',
-        detailedAnalysis: parsed.detailedAnalysis || 'Detailed bloodwork analysis is currently unavailable. Please consult with a healthcare professional for proper interpretation.',
+        summary: parsed.summary || `${isMultipleTests ? 'Multi-test' : 'Single'} bloodwork analysis completed with available data.`,
+        detailedAnalysis: parsed.detailedAnalysis || `Detailed ${isMultipleTests ? 'trend' : 'bloodwork'} analysis is currently unavailable. Please consult with a healthcare professional for proper interpretation.`,
         llmModel: this.currentModel
       };
     } catch (error) {
-      logger.error('Failed to parse AI response for bloodwork analysis:', error);
+      logger.error(`Failed to parse AI response for ${isMultipleTests ? 'multi-test' : 'single'} bloodwork analysis:`, error);
       logger.error('Raw AI response (first 500 chars):', response?.substring(0, 500));
       logger.error('Cleaned response (first 500 chars):', cleanedResponse?.substring(0, 500));
       
       // Fallback response
       return {
-        insights: ['Unable to analyze bloodwork data at this time', 'Most lab values appear to be documented', 'Professional interpretation recommended', 'Regular monitoring is important', 'Follow up with healthcare provider'],
+        insights: ['Unable to analyze bloodwork data at this time', `${isMultipleTests ? 'Multiple test results' : 'Lab values'} appear to be documented`, 'Professional interpretation recommended', 'Regular monitoring is important', 'Follow up with healthcare provider'],
         recommendations: ['Consult with a healthcare professional for proper interpretation', 'Discuss any abnormal values with your doctor', 'Maintain regular health checkups', 'Keep a record of all lab results', 'Follow prescribed treatment plans'],
         confidence: 0.1,
-        summary: 'Bloodwork analysis temporarily unavailable due to technical issues.',
-        detailedAnalysis: 'We were unable to generate a detailed bloodwork analysis at this time. This may be due to technical issues or service limitations. For proper medical interpretation of your lab results, it is essential to consult with a qualified healthcare professional who can provide personalized medical advice based on your complete health history, current symptoms, and individual risk factors. Never rely solely on automated analysis for medical decisions.',
+        summary: `${isMultipleTests ? 'Multi-test' : 'Single'} bloodwork analysis temporarily unavailable due to technical issues.`,
+        detailedAnalysis: `We were unable to generate a detailed ${isMultipleTests ? 'trend-based ' : ''}bloodwork analysis at this time. This may be due to technical issues or service limitations. For proper medical interpretation of your lab results${isMultipleTests ? ' and trends over time' : ''}, it is essential to consult with a qualified healthcare professional who can provide personalized medical advice based on your complete health history, current symptoms, and individual risk factors. Never rely solely on automated analysis for medical decisions.`,
         llmModel: this.currentModel
       };
     }
@@ -1000,6 +1110,157 @@ Ensure the array has exactly ${foodQueries.length} items in the same order as th
         confidence: 0.1,
         weightConversion: undefined
       }));
+    }
+  }
+
+  async analyzeSupplementQuery(query: string): Promise<{
+    name: string;
+    brand?: string;
+    dosage: number;
+    unit: string;
+    form: string;
+    activeIngredients: string[];
+    content: any;
+    instructions?: string;
+    notes?: string;
+    confidence: number;
+  }> {
+    const prompt = `
+You are a supplement and medication expert. Analyze the following supplement query and provide detailed information.
+
+Query: "${query}"
+
+Extract or estimate the following information:
+1. Supplement name (standardized)
+2. Brand (if mentioned)
+3. Dosage amount and unit
+4. Form (capsule, tablet, liquid, powder, gummy, injection, patch, other)
+5. Active ingredients list
+6. Nutritional/supplement content (vitamins, minerals, compounds)
+7. Instructions (if any - "take with food", etc.)
+8. Notes: Include helpful information about primary uses, benefits, potential side effects, and other important details
+9. Confidence in analysis (0-1)
+
+Return ONLY valid JSON in this exact format:
+{
+  "name": "Vitamin D3",
+  "brand": "Nature Made",
+  "dosage": 2000,
+  "unit": "IU",
+  "form": "capsule",
+  "activeIngredients": ["Cholecalciferol"],
+  "content": {
+    "vitaminD": 2000,
+    "calcium": 0,
+    "magnesium": 0,
+    "vitaminK": 0,
+    "omega3": 0,
+    "probioticCFU": 0,
+    "coq10": 0,
+    "creatine": 0
+  },
+  "instructions": "Take with food for better absorption",
+  "notes": "Supports bone health, immune function, and muscle strength. Helps with calcium absorption. May improve mood and reduce inflammation. Best taken with fatty foods. Deficiency is common, especially in winter months.",
+  "confidence": 0.9
+}
+
+For content values:
+- Use 0 for nutrients not present in the supplement
+- Include values in standard units (mg, mcg, IU as appropriate)
+- Common supplement compounds: vitaminA, vitaminC, vitaminD, vitaminE, vitaminK, thiamin, riboflavin, niacin, vitaminB6, folate, vitaminB12, biotin, pantothenicAcid, calcium, magnesium, iron, zinc, selenium, potassium, phosphorus, sodium, omega3, omega6, creatine, coq10, probioticCFU
+
+For notes, include:
+- Primary uses and health benefits
+- Common dosage recommendations
+- Best time to take or absorption tips
+- Potential interactions or contraindications
+- Who might benefit most from this supplement
+
+If the query is unclear or insufficient, make reasonable assumptions but lower the confidence score.
+    `;
+
+    try {
+      const response = await this.callOpenAI(prompt, 1000);
+      
+      let cleanedResponse = response.trim();
+      
+      // Remove markdown code blocks if present
+      if (cleanedResponse.includes('```json')) {
+        const jsonMatch = cleanedResponse.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          cleanedResponse = jsonMatch[1].trim();
+        }
+      } else if (cleanedResponse.includes('```')) {
+        const jsonMatch = cleanedResponse.match(/```\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          cleanedResponse = jsonMatch[1].trim();
+        }
+      }
+
+      const parsed = JSON.parse(cleanedResponse);
+      
+      // Validate and normalize the response
+      return {
+        name: parsed.name || query,
+        brand: parsed.brand || undefined,
+        dosage: Number(parsed.dosage) || 1,
+        unit: parsed.unit || 'capsule',
+        form: parsed.form || 'capsule',
+        activeIngredients: Array.isArray(parsed.activeIngredients) ? parsed.activeIngredients : [],
+        content: {
+          vitaminA: Number(parsed.content?.vitaminA) || 0,
+          vitaminC: Number(parsed.content?.vitaminC) || 0,
+          vitaminD: Number(parsed.content?.vitaminD) || 0,
+          vitaminE: Number(parsed.content?.vitaminE) || 0,
+          vitaminK: Number(parsed.content?.vitaminK) || 0,
+          thiamin: Number(parsed.content?.thiamin) || 0,
+          riboflavin: Number(parsed.content?.riboflavin) || 0,
+          niacin: Number(parsed.content?.niacin) || 0,
+          vitaminB6: Number(parsed.content?.vitaminB6) || 0,
+          folate: Number(parsed.content?.folate) || 0,
+          vitaminB12: Number(parsed.content?.vitaminB12) || 0,
+          biotin: Number(parsed.content?.biotin) || 0,
+          pantothenicAcid: Number(parsed.content?.pantothenicAcid) || 0,
+          calcium: Number(parsed.content?.calcium) || 0,
+          magnesium: Number(parsed.content?.magnesium) || 0,
+          iron: Number(parsed.content?.iron) || 0,
+          zinc: Number(parsed.content?.zinc) || 0,
+          selenium: Number(parsed.content?.selenium) || 0,
+          potassium: Number(parsed.content?.potassium) || 0,
+          phosphorus: Number(parsed.content?.phosphorus) || 0,
+          sodium: Number(parsed.content?.sodium) || 0,
+          omega3: Number(parsed.content?.omega3) || 0,
+          omega6: Number(parsed.content?.omega6) || 0,
+          creatine: Number(parsed.content?.creatine) || 0,
+          coq10: Number(parsed.content?.coq10) || 0,
+          probioticCFU: Number(parsed.content?.probioticCFU) || 0,
+          confidence: Math.min(Math.max(Number(parsed.content?.confidence) || 0.8, 0), 1)
+        },
+        instructions: parsed.instructions || undefined,
+        notes: parsed.notes || undefined,
+        confidence: Math.min(Math.max(Number(parsed.confidence) || 0.8, 0), 1)
+      };
+
+    } catch (error) {
+      logger.error('Supplement analysis failed:', error);
+      
+      // Fallback: return basic supplement info
+      return {
+        name: query,
+        dosage: 1,
+        unit: 'capsule',
+        form: 'capsule',
+        activeIngredients: [],
+        content: {
+          vitaminA: 0, vitaminC: 0, vitaminD: 0, vitaminE: 0, vitaminK: 0,
+          thiamin: 0, riboflavin: 0, niacin: 0, vitaminB6: 0, folate: 0,
+          vitaminB12: 0, biotin: 0, pantothenicAcid: 0, calcium: 0,
+          magnesium: 0, iron: 0, zinc: 0, selenium: 0, potassium: 0,
+          phosphorus: 0, sodium: 0, omega3: 0, omega6: 0, creatine: 0,
+          coq10: 0, probioticCFU: 0, confidence: 0.1
+        },
+        confidence: 0.1
+      };
     }
   }
 }

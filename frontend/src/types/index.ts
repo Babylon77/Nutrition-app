@@ -176,4 +176,146 @@ export interface NutritionSummary {
   goalProtein?: number;
   goalCarbs?: number;
   goalFat?: number;
+}
+
+export interface SupplementItem {
+  name: string;
+  brand?: string;
+  dosage: number;
+  unit: string; // mg, mcg, IU, capsules, tablets, ml, etc.
+  
+  // Supplement specific fields
+  form?: 'capsule' | 'tablet' | 'liquid' | 'powder' | 'gummy' | 'injection' | 'patch' | 'other';
+  activeIngredients?: string[]; // ['Vitamin D3', 'K2', etc.]
+  
+  // Nutritional content (if applicable)
+  calories?: number;
+  
+  // Vitamins (if supplement contains them)
+  vitaminA?: number;
+  vitaminC?: number;
+  vitaminD?: number;
+  vitaminE?: number;
+  vitaminK?: number;
+  thiamin?: number; // B1
+  riboflavin?: number; // B2
+  niacin?: number; // B3
+  vitaminB6?: number;
+  folate?: number; // B9
+  vitaminB12?: number;
+  biotin?: number;
+  pantothenicAcid?: number; // B5
+  
+  // Minerals (if supplement contains them)
+  calcium?: number;
+  magnesium?: number;
+  iron?: number;
+  zinc?: number;
+  selenium?: number;
+  potassium?: number;
+  phosphorus?: number;
+  sodium?: number;
+  
+  // Common supplement compounds
+  omega3?: number;
+  omega6?: number;
+  creatine?: number;
+  coq10?: number;
+  probioticCFU?: number; // Colony Forming Units for probiotics
+  
+  // Medication specific fields
+  isPreScription?: boolean;
+  medicationClass?: string; // 'statin', 'blood_pressure', 'diabetes', etc.
+  
+  // Timing and instructions
+  instructions?: string; // "Take with food", "Take on empty stomach", etc.
+  notes?: string;
+  
+  // Metadata
+  confidence?: number; // AI analysis confidence
+}
+
+export interface SupplementLog {
+  _id: string;
+  userId: string;
+  date: Date;
+  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night' | 'with_meal' | 'other';
+  supplements: SupplementItem[];
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PersonalSupplement {
+  _id: string;
+  userId: string;
+  name: string;
+  normalizedName: string;
+  brand?: string;
+  defaultDosage: number;
+  defaultUnit: string;
+  form: 'capsule' | 'tablet' | 'liquid' | 'powder' | 'gummy' | 'injection' | 'patch' | 'other';
+  content: SupplementContent;
+  
+  // Supplement specific fields
+  activeIngredients?: string[];
+  isPreScription?: boolean;
+  medicationClass?: string;
+  
+  // User customizations
+  notes?: string;
+  instructions?: string; // "Take with food", etc.
+  isFavorite?: boolean;
+  category?: 'vitamin' | 'mineral' | 'protein' | 'omega' | 'probiotic' | 'medication' | 'herb' | 'other';
+  
+  // Usage tracking
+  timesUsed: number;
+  lastUsed?: Date;
+  
+  // Source information
+  sourceType: 'ai_analyzed' | 'user_created' | 'imported';
+  originalQuery?: string; // If from AI analysis
+  
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SupplementContent {
+  // Nutritional content (if applicable)
+  calories?: number;
+  
+  // Vitamins (if supplement contains them)
+  vitaminA?: number;
+  vitaminC?: number;
+  vitaminD?: number;
+  vitaminE?: number;
+  vitaminK?: number;
+  thiamin?: number; // B1
+  riboflavin?: number; // B2
+  niacin?: number; // B3
+  vitaminB6?: number;
+  folate?: number; // B9
+  vitaminB12?: number;
+  biotin?: number;
+  pantothenicAcid?: number; // B5
+  
+  // Minerals (if supplement contains them)
+  calcium?: number;
+  magnesium?: number;
+  iron?: number;
+  zinc?: number;
+  selenium?: number;
+  potassium?: number;
+  phosphorus?: number;
+  sodium?: number;
+  
+  // Common supplement compounds
+  omega3?: number;
+  omega6?: number;
+  creatine?: number;
+  coq10?: number;
+  probioticCFU?: number; // Colony Forming Units for probiotics
+  
+  // Metadata
+  confidence?: number;
 } 

@@ -6,6 +6,31 @@ This roadmap implements the features and priorities already outlined in `FEATURE
 
 ---
 
+## **DEVELOPMENT GUIDELINES & BEST PRACTICES** 🔧
+
+### **Critical Rules for All Sprints**
+1. **🚫 Never Break Existing Functionality** - Always test existing features before and after changes
+2. **🔗 Integration Awareness** - Be cognizant of frontend/backend integration with:
+   - OpenAI API (cost implications, rate limits, error handling)
+   - MongoDB Database (schema changes, data migrations)
+   - Existing API endpoints and data flow
+3. **📱 Mobile-First Philosophy** - All new features must be mobile-optimized from day one
+   - Test on iPhone 12 and Pixel 7 specifically
+   - Responsive design patterns throughout
+   - Touch-friendly interactions
+4. **⚠️ Compilation Error Monitoring** - Always review terminal for:
+   - TypeScript compilation errors
+   - ESLint warnings
+   - React warnings
+   - Build failures
+
+### **Development Workflow**
+- **Before**: Test existing functionality
+- **During**: Monitor terminal for errors continuously
+- **After**: Full mobile testing and integration verification
+
+---
+
 ## **SPRINT 1: Food System Core Improvements** 
 *Priority: HIGH | Duration: 2 weeks | Based on High Priority MVP+ Features*
 
