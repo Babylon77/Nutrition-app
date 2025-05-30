@@ -1105,11 +1105,10 @@ export const FoodLog: React.FC = () => {
         )}
 
         {/* Add Food Dialog */}
-        <Dialog open={addFoodOpen} onClose={() => setAddFoodOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Add Food Item</DialogTitle>
+        <Dialog open={addFoodOpen} onClose={() => setAddFoodOpen(false)} maxWidth="md" fullWidth>
           <form>
-            <DialogContent>
-              <Stack spacing={3} sx={{ pt: 1 }}>
+            <DialogContent sx={{ pt: 3, pb: 2 }}>
+              <Stack spacing={3}>
                 <Alert severity="info">
                   <Typography variant="body2" fontWeight="bold" gutterBottom>
                     💡 For best results and cost savings: Add multiple foods to your list, then analyze all at once!
@@ -1132,6 +1131,7 @@ export const FoodLog: React.FC = () => {
                       error={!!errors.foodQuery}
                       helperText={errors.foodQuery?.message}
                       fullWidth
+                      size="large"
                     />
                   )}
                 />
@@ -1196,8 +1196,8 @@ export const FoodLog: React.FC = () => {
                 />
               </Stack>
             </DialogContent>
-            <DialogActions sx={{ flexDirection: 'column', gap: 1, alignItems: 'stretch', px: 3, pb: 2 }}>
-              <Box display="flex" gap={1}>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Box display="flex" gap={2} width="100%">
                 <Button onClick={() => setAddFoodOpen(false)} sx={{ flex: 1 }}>
                   Cancel
                 </Button>
@@ -1216,13 +1216,13 @@ export const FoodLog: React.FC = () => {
             </DialogActions>
           </form>
           
-          {/* Pending Foods Section - Always show when there are pending foods */}
+          {/* Pending Foods Section - Optimized for 5-6 items */}
           {pendingFoods.length > 0 && (
             <>
               <Divider />
-              <DialogContent sx={{ pt: 2, pb: 1 }}>
+              <DialogContent sx={{ pt: 2, pb: 3 }}>
                 <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                  <Typography variant="h6">
+                  <Typography variant="h6" sx={{ fontSize: '1.1rem' }}>
                     Your Food List ({pendingFoods.length})
                   </Typography>
                   <Button 
@@ -1235,12 +1235,38 @@ export const FoodLog: React.FC = () => {
                   </Button>
                 </Box>
                 
-                <List dense sx={{ bgcolor: 'grey.50', borderRadius: 1, mb: 2, maxHeight: 200, overflow: 'auto' }}>
-                  {pendingFoods.map((food) => (
-                    <ListItem key={food.id}>
+                <List 
+                  dense 
+                  sx={{ 
+                    bgcolor: 'grey.50', 
+                    borderRadius: 2, 
+                    mb: 2, 
+                    maxHeight: 280, // Optimized for 5-6 items
+                    overflow: 'auto',
+                    border: '1px solid',
+                    borderColor: 'grey.200'
+                  }}
+                >
+                  {pendingFoods.map((food, index) => (
+                    <ListItem 
+                      key={food.id}
+                      sx={{ 
+                        py: 1.5,
+                        borderBottom: index < pendingFoods.length - 1 ? '1px solid' : 'none',
+                        borderBottomColor: 'grey.200'
+                      }}
+                    >
                       <ListItemText
-                        primary={`${food.quantity} ${food.unit} ${food.foodQuery}`}
-                        secondary={`${food.mealType.charAt(0).toUpperCase() + food.mealType.slice(1)}`}
+                        primary={
+                          <Typography variant="body1" fontWeight="medium">
+                            {food.quantity} {food.unit} {food.foodQuery}
+                          </Typography>
+                        }
+                        secondary={
+                          <Typography variant="body2" color="text.secondary">
+                            {food.mealType.charAt(0).toUpperCase() + food.mealType.slice(1)}
+                          </Typography>
+                        }
                       />
                       <ListItemSecondaryAction>
                         <IconButton 
@@ -1248,6 +1274,7 @@ export const FoodLog: React.FC = () => {
                           aria-label="delete"
                           onClick={() => removePendingFood(food.id)}
                           size="small"
+                          sx={{ color: 'error.main' }}
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -1256,7 +1283,7 @@ export const FoodLog: React.FC = () => {
                   ))}
                 </List>
                 
-                <Box display="flex" justifyContent="center">
+                <Box display="flex" justifyContent="center" mb={2}>
                   <Button 
                     onClick={analyzePendingFoods}
                     variant="contained"
@@ -1264,14 +1291,17 @@ export const FoodLog: React.FC = () => {
                     startIcon={bulkAnalyzing ? <CircularProgress size={20} /> : <AnalyticsIcon />}
                     color="primary"
                     size="large"
-                    sx={{ minWidth: 200 }}
+                    sx={{ 
+                      minWidth: 240,
+                      py: 1.5
+                    }}
                   >
                     {bulkAnalyzing ? 'Analyzing All...' : `Analyze All ${pendingFoods.length} Foods`}
                   </Button>
                 </Box>
                 
                 {pendingFoods.length > 1 && (
-                  <Alert severity="success" sx={{ mt: 2 }}>
+                  <Alert severity="success" sx={{ mt: 1 }}>
                     <Typography variant="body2">
                       💰 Bulk analysis saves API costs! {pendingFoods.length} foods = 1 API call instead of {pendingFoods.length}.
                     </Typography>
