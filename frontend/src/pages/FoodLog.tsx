@@ -197,12 +197,10 @@ export const FoodLog: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [addFoodOpen, setAddFoodOpen] = useState(false);
-  const [addingFood, setAddingFood] = useState(false);
   
   // New state for bulk food entry
   const [pendingFoods, setPendingFoods] = useState<PendingFoodItem[]>([]);
   const [bulkAnalyzing, setBulkAnalyzing] = useState(false);
-  const [showPendingList, setShowPendingList] = useState(false);
 
   const {
     control,
@@ -381,7 +379,7 @@ export const FoodLog: React.FC = () => {
     }
 
     try {
-      setAddingFood(true);
+      setLoading(true);
       setError('');
 
       // Use the AI food lookup API
@@ -464,7 +462,7 @@ export const FoodLog: React.FC = () => {
     } catch (err: any) {
       setError(err.message || 'Failed to add food item');
     } finally {
-      setAddingFood(false);
+      setLoading(false);
     }
   };
 
@@ -484,7 +482,6 @@ export const FoodLog: React.FC = () => {
     };
 
     setPendingFoods(prev => [...prev, newPendingFood]);
-    setShowPendingList(true);
     reset();
     setError('');
   };
@@ -497,7 +494,6 @@ export const FoodLog: React.FC = () => {
   // Clear all pending foods
   const clearPendingFoods = () => {
     setPendingFoods([]);
-    setShowPendingList(false);
   };
 
   // Bulk analyze all pending foods
@@ -1205,7 +1201,7 @@ export const FoodLog: React.FC = () => {
         {/* Add Food Dialog */}
         <Dialog open={addFoodOpen} onClose={() => setAddFoodOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle>Add Food Item</DialogTitle>
-          <form onSubmit={handleSubmit(addFoodItem)}>
+          <form>
             <DialogContent>
               <Stack spacing={3} sx={{ pt: 1 }}>
                 <Alert severity="info">
@@ -1303,43 +1299,32 @@ export const FoodLog: React.FC = () => {
               </Stack>
             </DialogContent>
             <DialogActions sx={{ flexDirection: 'column', gap: 1, alignItems: 'stretch', px: 3, pb: 2 }}>
-              {/* Primary action: Add to list */}
-              <Button 
-                onClick={handleSubmit(addToPendingList)}
-                variant="contained"
-                startIcon={<AddIcon />}
-                color="primary"
-                size="large"
-              >
-                Add to List ({pendingFoods.length})
-              </Button>
-              
               <Box display="flex" gap={1}>
                 <Button onClick={() => setAddFoodOpen(false)} sx={{ flex: 1 }}>
                   Cancel
                 </Button>
                 
-                {/* Secondary action: Immediate analysis */}
+                {/* Single action: Add to list */}
                 <Button 
-                  type="submit" 
-                  variant="outlined"
-                  disabled={addingFood}
-                  startIcon={addingFood ? <CircularProgress size={20} /> : null}
-                  sx={{ flex: 1 }}
+                  onClick={handleSubmit(addToPendingList)}
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  color="primary"
+                  sx={{ flex: 2 }}
                 >
-                  {addingFood ? 'Analyzing...' : 'Analyze Now'}
+                  Add to List ({pendingFoods.length})
                 </Button>
               </Box>
             </DialogActions>
           </form>
           
-          {/* Pending Foods Section */}
-          {showPendingList && pendingFoods.length > 0 && (
+          {/* Pending Foods Section - Always show when there are pending foods */}
+          {pendingFoods.length > 0 && (
             <>
               <Divider />
               <DialogContent>
                 <Typography variant="h6" gutterBottom>
-                  Pending Foods ({pendingFoods.length})
+                  Your Food List ({pendingFoods.length})
                 </Typography>
                 
                 <List dense>
@@ -1379,6 +1364,7 @@ export const FoodLog: React.FC = () => {
                     disabled={bulkAnalyzing || pendingFoods.length === 0}
                     startIcon={bulkAnalyzing ? <CircularProgress size={20} /> : <AnalyticsIcon />}
                     color="primary"
+                    size="large"
                     sx={{ ml: 'auto' }}
                   >
                     {bulkAnalyzing ? 'Analyzing All...' : `Analyze All ${pendingFoods.length} Foods`}
