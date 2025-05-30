@@ -258,6 +258,18 @@
 
 **Trial Strategy**: 14-day Premium trial → downgrade to free tier (not hard paywall)
 
+## Recent Fixes & Updates ✅
+
+### v1.0.3 - Timezone Bug Fix (5/29/2025)
+- **Fixed**: Date storage timezone issue where food logged in user's local time was appearing on wrong date
+- **Technical**: Changed from UTC Date objects to local date strings in both frontend and backend
+- **Impact**: Food logs now correctly appear on the date they were entered in user's local timezone
+
+### v1.0.2 - Production Deployment
+- **Fixed**: API URL configuration for production vs development
+- **Fixed**: MongoDB Atlas network access and connection
+- **Added**: Auto-deploy on git push to master branch
+
 ---
 
 **Last Updated**: [Date]  
