@@ -773,6 +773,70 @@ router.delete('/logs/:date', protect, asyncHandler(async (req, res) => {
   });
 }));
 
+// @desc    Get detailed nutrition info for multiple food items using AI (bulk processing)
+// @route   POST /api/food/bulk-lookup
+// @access  Private
+router.post('/bulk-lookup', protect, asyncHandler(async (req, res) => {
+  const { foods } = req.body;
+  
+  if (!foods || !Array.isArray(foods) || foods.length === 0) {
+    throw createError('Foods array is required', 400);
+  }
+
+  if (foods.length > 20) {
+    throw createError('Maximum 20 foods allowed per bulk request', 400);
+  }
+
+  try {
+    const startTime = Date.now();
+    
+    // Use AI service for bulk food analysis
+    const bulkResult = await aiService.bulkLookupFoods(foods);
+    
+    const processingTime = Date.now() - startTime;
+    
+    res.json({
+      success: true,
+      data: {
+        analyzedFoods: bulkResult.analyzedFoods,
+        totalApiCost: bulkResult.totalApiCost,
+        processingTime
+      }
+    });
+  } catch (error) {
+    // Fallback to individual lookups if bulk fails
+    try {
+      const analyzedFoods = [];
+      
+      for (const food of foods) {
+        const nutrition = foodService.calculateNutrition(food.foodQuery, food.quantity, food.unit);
+        
+        if (nutrition) {
+          analyzedFoods.push({
+            id: food.id,
+            name: food.foodQuery,
+            normalizedName: food.foodQuery,
+            quantity: food.quantity,
+            unit: food.unit,
+            nutrition,
+            confidence: 0.6
+          });
+        }
+      }
+      
+      res.json({
+        success: true,
+        data: {
+          analyzedFoods,
+          fallback: true
+        }
+      });
+    } catch (fallbackError) {
+      throw createError('Failed to analyze foods', 500);
+    }
+  }
+}));
+
 // @desc    Get detailed nutrition info for a food item using AI
 // @route   POST /api/food/lookup
 // @access  Private

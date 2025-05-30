@@ -755,6 +755,300 @@ Be accurate with portion sizes and provide realistic nutritional values. If the 
     }
   }
 
+  async bulkLookupFoods(foods: Array<{
+    id: string;
+    foodQuery: string;
+    quantity: number;
+    unit: string;
+  }>): Promise<{
+    analyzedFoods: Array<{
+      id: string;
+      name: string;
+      normalizedName: string;
+      quantity: number;
+      unit: string;
+      nutrition: {
+        // Macronutrients
+        calories: number;
+        protein: number;
+        carbs: number;
+        fat: number;
+        fiber: number;
+        sugar: number;
+        
+        // Minerals for metabolic health and hydration
+        sodium: number;
+        potassium: number;
+        calcium: number;
+        magnesium: number;
+        phosphorus: number;
+        iron: number;
+        zinc: number;
+        selenium: number;
+        
+        // Vitamins for immune system and overall health
+        vitaminA: number;
+        vitaminC: number;
+        vitaminD: number;
+        vitaminE: number;
+        vitaminK: number;
+        thiamin: number;
+        riboflavin: number;
+        niacin: number;
+        vitaminB6: number;
+        folate: number;
+        vitaminB12: number;
+        biotin: number;
+        pantothenicAcid: number;
+        
+        // Additional nutrients for lipids and cardiovascular health
+        cholesterol: number;
+        saturatedFat: number;
+        monounsaturatedFat: number;
+        polyunsaturatedFat: number;
+        transFat: number;
+        omega3: number;
+        omega6: number;
+        
+        // Performance compounds
+        creatine: number;
+      };
+      confidence: number;
+      weightConversion?: {
+        grams: number;
+        ounces: number;
+        pounds: number;
+      };
+    }>;
+    totalApiCost: number;
+  }> {
+    const estimatedCostPerItem = 0.002; // Approximate cost per individual lookup
+    const bulkCostSavings = 0.70; // 70% savings with bulk processing
+    
+    const foodQueries = foods.map((food, index) => 
+      `${index + 1}. "${food.foodQuery}" - ${food.quantity} ${food.unit}`
+    ).join('\n');
+
+    const prompt = `
+You are a nutrition expert with comprehensive knowledge of food composition. Analyze the following food items and provide detailed nutritional information for each.
+
+Food Items to Analyze:
+${foodQueries}
+
+Please provide a JSON response with comprehensive nutritional data for each food item. Focus on accuracy and include all available micronutrients important for:
+- Hydration and electrolyte balance (sodium, potassium, magnesium)
+- Metabolic health (B-vitamins, chromium, magnesium)
+- Lipid profile and cardiovascular health (omega-3s, fiber, detailed fat breakdown)
+- Immune system function (vitamins A, C, D, E, zinc, selenium)
+- Performance and muscle health (creatine for applicable foods)
+
+For non-weight based units (serving, cup, slice, etc.), provide weight conversion estimates.
+
+Return ONLY valid JSON in this exact format:
+{
+  "foods": [
+    {
+      "id": "${foods[0]?.id || ''}",
+      "name": "Original food name as entered",
+      "normalizedName": "Standardized food name",
+      "quantity": ${foods[0]?.quantity || 1},
+      "unit": "${foods[0]?.unit || 'serving'}",
+      "nutrition": {
+        "calories": 0,
+        "protein": 0,
+        "carbs": 0,
+        "fat": 0,
+        "fiber": 0,
+        "sugar": 0,
+        "sodium": 0,
+        "potassium": 0,
+        "calcium": 0,
+        "magnesium": 0,
+        "phosphorus": 0,
+        "iron": 0,
+        "zinc": 0,
+        "selenium": 0,
+        "vitaminA": 0,
+        "vitaminC": 0,
+        "vitaminD": 0,
+        "vitaminE": 0,
+        "vitaminK": 0,
+        "thiamin": 0,
+        "riboflavin": 0,
+        "niacin": 0,
+        "vitaminB6": 0,
+        "folate": 0,
+        "vitaminB12": 0,
+        "biotin": 0,
+        "pantothenicAcid": 0,
+        "cholesterol": 0,
+        "saturatedFat": 0,
+        "monounsaturatedFat": 0,
+        "polyunsaturatedFat": 0,
+        "transFat": 0,
+        "omega3": 0,
+        "omega6": 0,
+        "creatine": 0
+      },
+      "confidence": 85,
+      "weightConversion": {
+        "grams": 150,
+        "ounces": 5.3,
+        "pounds": 0.33
+      }
+    }${foods.length > 1 ? ',\n    // ... repeat for each food item' : ''}
+  ]
+}
+
+Units reference:
+- Macronutrients: grams (g) except calories (kcal)
+- Vitamins: mcg (micrograms) except Vitamin C, E, K, Niacin (mg)
+- Minerals: mg (milligrams) except selenium (mcg)
+- Creatine: grams (g) - only include if the food naturally contains creatine (meat, fish)
+- Weight conversion: only include if unit is NOT already weight-based (g, kg, oz, lb)
+- Confidence: 0-100 percentage
+
+Be accurate with portion sizes and provide realistic nutritional values. If any food item is ambiguous, make reasonable assumptions and adjust confidence accordingly.
+`;
+
+    let response: string = '';
+    let cleanedResponse: string = '';
+    
+    try {
+      response = await this.callOpenAI(prompt, 3000); // Increased token limit for multiple foods
+      
+      // Simple JSON extraction and cleaning
+      cleanedResponse = response.trim();
+      
+      // Remove markdown code blocks if present
+      if (cleanedResponse.includes('```json')) {
+        const jsonMatch = cleanedResponse.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          cleanedResponse = jsonMatch[1].trim();
+        }
+      } else if (cleanedResponse.includes('```')) {
+        const jsonMatch = cleanedResponse.match(/```\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          cleanedResponse = jsonMatch[1].trim();
+        }
+      }
+      
+      const parsed = JSON.parse(cleanedResponse);
+      
+      // Process each food item
+      const analyzedFoods = [];
+      
+      if (parsed.foods && Array.isArray(parsed.foods)) {
+        for (let i = 0; i < foods.length; i++) {
+          const originalFood = foods[i];
+          const aiFood = parsed.foods[i] || {};
+          
+          const nutrition = {
+            calories: Number(aiFood.nutrition?.calories) || 0,
+            protein: Number(aiFood.nutrition?.protein) || 0,
+            carbs: Number(aiFood.nutrition?.carbs) || 0,
+            fat: Number(aiFood.nutrition?.fat) || 0,
+            fiber: Number(aiFood.nutrition?.fiber) || 0,
+            sugar: Number(aiFood.nutrition?.sugar) || 0,
+            sodium: Number(aiFood.nutrition?.sodium) || 0,
+            potassium: Number(aiFood.nutrition?.potassium) || 0,
+            calcium: Number(aiFood.nutrition?.calcium) || 0,
+            magnesium: Number(aiFood.nutrition?.magnesium) || 0,
+            phosphorus: Number(aiFood.nutrition?.phosphorus) || 0,
+            iron: Number(aiFood.nutrition?.iron) || 0,
+            zinc: Number(aiFood.nutrition?.zinc) || 0,
+            selenium: Number(aiFood.nutrition?.selenium) || 0,
+            vitaminA: Number(aiFood.nutrition?.vitaminA) || 0,
+            vitaminC: Number(aiFood.nutrition?.vitaminC) || 0,
+            vitaminD: Number(aiFood.nutrition?.vitaminD) || 0,
+            vitaminE: Number(aiFood.nutrition?.vitaminE) || 0,
+            vitaminK: Number(aiFood.nutrition?.vitaminK) || 0,
+            thiamin: Number(aiFood.nutrition?.thiamin) || 0,
+            riboflavin: Number(aiFood.nutrition?.riboflavin) || 0,
+            niacin: Number(aiFood.nutrition?.niacin) || 0,
+            vitaminB6: Number(aiFood.nutrition?.vitaminB6) || 0,
+            folate: Number(aiFood.nutrition?.folate) || 0,
+            vitaminB12: Number(aiFood.nutrition?.vitaminB12) || 0,
+            biotin: Number(aiFood.nutrition?.biotin) || 0,
+            pantothenicAcid: Number(aiFood.nutrition?.pantothenicAcid) || 0,
+            cholesterol: Number(aiFood.nutrition?.cholesterol) || 0,
+            saturatedFat: Number(aiFood.nutrition?.saturatedFat) || 0,
+            monounsaturatedFat: Number(aiFood.nutrition?.monounsaturatedFat) || 0,
+            polyunsaturatedFat: Number(aiFood.nutrition?.polyunsaturatedFat) || 0,
+            transFat: Number(aiFood.nutrition?.transFat) || 0,
+            omega3: Number(aiFood.nutrition?.omega3) || 0,
+            omega6: Number(aiFood.nutrition?.omega6) || 0,
+            creatine: Number(aiFood.nutrition?.creatine) || 0,
+          };
+          
+          analyzedFoods.push({
+            id: originalFood.id,
+            name: aiFood.name || originalFood.foodQuery,
+            normalizedName: aiFood.normalizedName || originalFood.foodQuery,
+            quantity: Number(aiFood.quantity) || originalFood.quantity,
+            unit: aiFood.unit || originalFood.unit,
+            nutrition,
+            confidence: Math.min(Math.max(Number(aiFood.confidence) || 80, 0), 100) / 100,
+            weightConversion: aiFood.weightConversion || undefined
+          });
+        }
+      } else {
+        // Fallback if response format is unexpected
+        throw new Error('Invalid response format from AI');
+      }
+      
+      // Calculate cost savings
+      const individualCost = foods.length * estimatedCostPerItem;
+      const bulkCost = individualCost * bulkCostSavings;
+      
+      return {
+        analyzedFoods,
+        totalApiCost: bulkCost
+      };
+    } catch (error) {
+      logger.error('Failed to bulk lookup foods with AI:', error);
+      
+      // Fallback: process each food individually
+      const analyzedFoods = [];
+      
+      for (const food of foods) {
+        try {
+          const result = await this.lookupFood(food.foodQuery, food.quantity, food.unit);
+          analyzedFoods.push({
+            id: food.id,
+            ...result
+          });
+        } catch (individualError) {
+          // Add a fallback entry even for failed individual lookups
+          analyzedFoods.push({
+            id: food.id,
+            name: food.foodQuery,
+            normalizedName: food.foodQuery,
+            quantity: food.quantity,
+            unit: food.unit,
+            nutrition: {
+              calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0,
+              sodium: 0, potassium: 0, calcium: 0, magnesium: 0, phosphorus: 0,
+              iron: 0, zinc: 0, selenium: 0, vitaminA: 0, vitaminC: 0, vitaminD: 0,
+              vitaminE: 0, vitaminK: 0, thiamin: 0, riboflavin: 0, niacin: 0,
+              vitaminB6: 0, folate: 0, vitaminB12: 0, biotin: 0, pantothenicAcid: 0,
+              cholesterol: 0, saturatedFat: 0, monounsaturatedFat: 0, 
+              polyunsaturatedFat: 0, transFat: 0, omega3: 0, omega6: 0,
+              creatine: 0
+            },
+            confidence: 0.1,
+            weightConversion: undefined
+          });
+        }
+      }
+      
+      return {
+        analyzedFoods,
+        totalApiCost: foods.length * estimatedCostPerItem // Full cost for individual lookups
+      };
+    }
+  }
+
   async searchFoods(query: string): Promise<{
     name: string;
     category: string;
