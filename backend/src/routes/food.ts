@@ -894,6 +894,7 @@ router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
           data: { queue: req.session.foodQueue }
         });
       });
+      break;
 
     case 'get_queue':
       // Get current queue state
