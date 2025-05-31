@@ -265,7 +265,7 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({ action: 'process_queue', data: {} }),
+        body: JSON.stringify({ action: 'process_queue', data: { itemsToProcess: queue } }),
       });
 
       console.log(`📡 PROCESS QUEUE - Response status: ${response.status}`);

@@ -929,7 +929,7 @@ router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
 
     case 'process_queue':
       // Process all items in queue
-      const queue = req.session.foodQueue || [];
+      const queue = req.body.data && req.body.data.itemsToProcess ? req.body.data.itemsToProcess : [];
       const readyItems = queue.filter(item => item.status === 'ready');
       const needsAnalysis = queue.filter(item => item.status === 'needs_analysis');
 
