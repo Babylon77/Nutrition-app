@@ -17,9 +17,10 @@ import {
   Menu,
   MenuItem,
   Divider,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
-  Menu as MenuIcon,
   Dashboard as DashboardIcon,
   Restaurant as RestaurantIcon,
   MenuBook as MenuBookIcon,
@@ -28,8 +29,11 @@ import {
   Analytics as AnalyticsIcon,
   Person as PersonIcon,
   Logout as LogoutIcon,
+  Home as HomeIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import BottomNavigation from './BottomNavigation';
+import AIAssistant from './AIAssistant';
 
 const drawerWidth = 240;
 
@@ -55,10 +59,8 @@ export const Layout: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -79,11 +81,26 @@ export const Layout: React.FC = () => {
     setMobileOpen(false);
   };
 
+  const handleQuickAdd = () => {
+    navigate('/food-log');
+  };
+
+  const handleGoHome = () => {
+    navigate('/landing');
+    handleProfileMenuClose();
+  };
+
   const drawer = (
     <div>
       <Toolbar>
-        <Typography variant="h6" noWrap component="div" color="primary">
-          NutriTrack
+        <Typography variant="h6" noWrap component="div" 
+          sx={{ 
+            color: 'var(--color-primary-blue)',
+            fontWeight: 'var(--font-weight-bold)',
+            fontFamily: 'Inter, sans-serif'
+          }}
+        >
+          Fuel IQ
         </Typography>
       </Toolbar>
       <Divider />
@@ -96,8 +113,26 @@ export const Layout: React.FC = () => {
               data-tour={item.path === '/analysis' ? 'analytics-tab' : 
                         item.path === '/bloodwork' ? 'bloodwork-tab' : 
                         undefined}
+              sx={{
+                '&.Mui-selected': {
+                  backgroundColor: 'var(--color-bg-accent-subtle)',
+                  color: 'var(--color-primary-blue)',
+                  '&:hover': {
+                    backgroundColor: 'var(--color-bg-accent-subtle)',
+                  },
+                },
+                '&:hover': {
+                  backgroundColor: 'var(--color-bg-hover)',
+                },
+              }}
             >
-              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemIcon 
+                sx={{ 
+                  color: location.pathname === item.path ? 'var(--color-primary-blue)' : 'inherit' 
+                }}
+              >
+                {item.icon}
+              </ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>
           </ListItem>
@@ -109,109 +144,201 @@ export const Layout: React.FC = () => {
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <AppBar
-        position="fixed"
+      
+      {/* Top App Bar - Hidden on mobile, visible on desktop */}
+      {!isMobile && (
+        <AppBar
+          position="fixed"
+          sx={{
+            width: `calc(100% - ${drawerWidth}px)`,
+            ml: `${drawerWidth}px`,
+            backgroundColor: 'var(--color-bg-card)',
+            color: 'var(--color-text-primary)',
+            boxShadow: 'var(--shadow-sm)',
+            borderBottom: '1px solid var(--color-border-light)',
+          }}
+        >
+          <Toolbar>
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+              Fuel IQ
+            </Typography>
+            <IconButton
+              onClick={handleGoHome}
+              sx={{ 
+                color: 'var(--color-text-primary)',
+                mr: 1
+              }}
+              title="Back to Home"
+            >
+              <HomeIcon />
+            </IconButton>
+            <AIAssistant size="medium" />
+            <Box sx={{ ml: 1 }}>
+              <IconButton
+                size="large"
+                edge="end"
+                aria-label="account of current user"
+                aria-controls="profile-menu"
+                aria-haspopup="true"
+                onClick={handleProfileMenuOpen}
+                sx={{ color: 'var(--color-text-primary)' }}
+              >
+                <Avatar sx={{ 
+                  width: 32, 
+                  height: 32,
+                  backgroundColor: 'var(--color-primary-blue)',
+                  color: 'var(--color-text-white)'
+                }}>
+                  {user?.firstName?.charAt(0) || 'U'}
+                </Avatar>
+              </IconButton>
+            </Box>
+          </Toolbar>
+        </AppBar>
+      )}
+
+      {/* Mobile Top Bar - Only visible on mobile */}
+      {isMobile && (
+        <AppBar
+          position="fixed"
+          sx={{
+            backgroundColor: 'var(--color-bg-card)',
+            color: 'var(--color-text-primary)',
+            boxShadow: 'var(--shadow-sm)',
+            borderBottom: '1px solid var(--color-border-light)',
+          }}
+        >
+          <Toolbar>
+            <Typography variant="h6" noWrap component="div" 
+              sx={{ 
+                flexGrow: 1,
+                color: 'var(--color-primary-blue)',
+                fontWeight: 'var(--font-weight-bold)',
+                fontFamily: 'Inter, sans-serif'
+              }}
+            >
+              Fuel IQ
+            </Typography>
+            <IconButton
+              onClick={handleGoHome}
+              sx={{ 
+                color: 'var(--color-text-primary)',
+                mr: 1
+              }}
+              title="Back to Home"
+            >
+              <HomeIcon />
+            </IconButton>
+            <AIAssistant size="medium" />
+            <Box sx={{ ml: 1 }}>
+              <IconButton
+                size="large"
+                edge="end"
+                aria-label="account of current user"
+                aria-controls="profile-menu"
+                aria-haspopup="true"
+                onClick={handleProfileMenuOpen}
+                sx={{ color: 'var(--color-text-primary)' }}
+              >
+                <Avatar sx={{ 
+                  width: 32, 
+                  height: 32,
+                  backgroundColor: 'var(--color-primary-blue)',
+                  color: 'var(--color-text-white)'
+                }}>
+                  {user?.firstName?.charAt(0) || 'U'}
+                </Avatar>
+              </IconButton>
+            </Box>
+          </Toolbar>
+        </AppBar>
+      )}
+
+      {/* Profile Menu */}
+      <Menu
+        id="profile-menu"
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleProfileMenuClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
         sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          '& .MuiPaper-root': {
+            borderRadius: 'var(--border-radius-lg)',
+            boxShadow: 'var(--shadow-lg)',
+          },
         }}
       >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Nutrition Tracker
-          </Typography>
-          <IconButton
-            size="large"
-            edge="end"
-            aria-label="account of current user"
-            aria-controls="profile-menu"
-            aria-haspopup="true"
-            onClick={handleProfileMenuOpen}
-            color="inherit"
-          >
-            <Avatar sx={{ width: 32, height: 32 }}>
-              {user?.firstName?.charAt(0) || 'U'}
-            </Avatar>
-          </IconButton>
-          <Menu
-            id="profile-menu"
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleProfileMenuClose}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'right',
-            }}
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'right',
-            }}
-          >
-            <MenuItem onClick={() => { handleNavigate('/profile'); handleProfileMenuClose(); }}>
-              <ListItemIcon>
-                <PersonIcon fontSize="small" />
-              </ListItemIcon>
-              Profile
-            </MenuItem>
-            <MenuItem onClick={handleLogout}>
-              <ListItemIcon>
-                <LogoutIcon fontSize="small" />
-              </ListItemIcon>
-              Logout
-            </MenuItem>
-          </Menu>
-        </Toolbar>
-      </AppBar>
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-        aria-label="navigation"
-      >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
+        <MenuItem onClick={() => { handleNavigate('/profile'); handleProfileMenuClose(); }}>
+          <ListItemIcon>
+            <PersonIcon fontSize="small" />
+          </ListItemIcon>
+          Profile
+        </MenuItem>
+        <MenuItem onClick={handleGoHome}>
+          <ListItemIcon>
+            <HomeIcon fontSize="small" />
+          </ListItemIcon>
+          Back to Home
+        </MenuItem>
+        <MenuItem onClick={handleLogout}>
+          <ListItemIcon>
+            <LogoutIcon fontSize="small" />
+          </ListItemIcon>
+          Logout
+        </MenuItem>
+      </Menu>
+
+      {/* Desktop Sidebar - Hidden on mobile */}
+      {!isMobile && (
+        <Box
+          component="nav"
+          sx={{ width: drawerWidth, flexShrink: 0 }}
+          aria-label="navigation"
         >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
+          <Drawer
+            variant="permanent"
+            sx={{
+              '& .MuiDrawer-paper': { 
+                boxSizing: 'border-box', 
+                width: drawerWidth,
+                backgroundColor: 'var(--color-bg-card)',
+                borderRight: '1px solid var(--color-border-light)',
+              },
+            }}
+            open
+          >
+            {drawer}
+          </Drawer>
+        </Box>
+      )}
+
+      {/* Main Content */}
       <Box
         component="main"
+        className="main-content"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          p: { xs: 2, sm: 3 },
+          width: { sm: `calc(100% - ${isMobile ? 0 : drawerWidth}px)` },
+          backgroundColor: 'var(--color-bg-primary)',
+          minHeight: '100vh',
         }}
       >
         <Toolbar />
         <Outlet />
       </Box>
+
+      {/* Bottom Navigation - Only visible on mobile */}
+      {isMobile && (
+        <BottomNavigation onQuickAdd={handleQuickAdd} />
+      )}
     </Box>
   );
 }; 

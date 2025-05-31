@@ -224,6 +224,15 @@ export const Supplements: React.FC = () => {
                   fullWidth: true,
                   size: 'small',
                   sx: { mb: 0 }
+                },
+                popper: {
+                  placement: 'bottom-start',
+                  sx: {
+                    zIndex: 1300,
+                    '& .MuiPaper-root': {
+                      marginTop: 1
+                    }
+                  }
                 }
               }}
             />

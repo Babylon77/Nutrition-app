@@ -267,17 +267,22 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
   const needsAnalysisCount = queue.filter(item => item.status === 'needs_analysis').length;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="h6">Smart Food Entry</Typography>
-          <IconButton onClick={onClose} size="small">
-            <CloseIcon />
-          </IconButton>
-        </Box>
-      </DialogTitle>
-      
-      <DialogContent>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      scroll="paper"
+      sx={{
+        '& .MuiDialog-paper': {
+          margin: { xs: 1, sm: 2 },
+          maxHeight: { xs: 'calc(100vh - 16px)', sm: 'calc(100vh - 64px)' },
+          width: { xs: 'calc(100vw - 16px)', sm: 'auto' }
+        }
+      }}
+    >
+      <DialogTitle>Smart Food Entry</DialogTitle>
+      <DialogContent sx={{ overflowY: 'auto' }}>
         <Stack spacing={3} sx={{ pt: 1 }}>
           {error && (
             <Alert severity="error" onClose={() => setError('')}>
@@ -299,58 +304,84 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
               sx={{ mb: 2 }}
               data-tour="search-input"
               autoFocus
+              size="small"
             />
 
-            <Box 
-              display="flex" 
-              gap={2} 
-              mb={2}
-              sx={{
-                flexDirection: { xs: 'column', sm: 'row' },
-                '& .MuiTextField-root': {
-                  flex: { sm: 1 }
-                }
-              }}
+            <Stack 
+              spacing={2}
+              sx={{ mb: 2 }}
             >
-              <TextField
-                label="Quantity"
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-                inputProps={{ step: 0.1, min: 0.1 }}
-                fullWidth
-              />
-
-              <TextField
-                label="Unit"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                select
-                fullWidth
+              <Stack 
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
               >
-                <MenuItem value="serving">serving</MenuItem>
-                <MenuItem value="cup">cup</MenuItem>
-                <MenuItem value="oz">oz</MenuItem>
-                <MenuItem value="g">g</MenuItem>
-                <MenuItem value="tbsp">tbsp</MenuItem>
-                <MenuItem value="tsp">tsp</MenuItem>
-                <MenuItem value="piece">piece</MenuItem>
-                <MenuItem value="slice">slice</MenuItem>
-              </TextField>
+                <TextField
+                  label="Quantity"
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  inputProps={{ step: 0.1, min: 0.1 }}
+                  fullWidth
+                  size="small"
+                />
 
-              <TextField
-                label="Meal"
-                value={mealType}
-                onChange={(e) => setMealType(e.target.value)}
-                select
-                fullWidth
-              >
-                <MenuItem value="breakfast">🌅 Breakfast</MenuItem>
-                <MenuItem value="lunch">🌞 Lunch</MenuItem>
-                <MenuItem value="dinner">🌙 Dinner</MenuItem>
-                <MenuItem value="snacks">🍎 Snacks</MenuItem>
-              </TextField>
-            </Box>
+                <TextField
+                  label="Unit"
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  select
+                  fullWidth
+                  size="small"
+                >
+                  <MenuItem value="serving">serving</MenuItem>
+                  <MenuItem value="cup">cup</MenuItem>
+                  <MenuItem value="oz">oz</MenuItem>
+                  <MenuItem value="g">g</MenuItem>
+                  <MenuItem value="tbsp">tbsp</MenuItem>
+                  <MenuItem value="tsp">tsp</MenuItem>
+                  <MenuItem value="piece">piece</MenuItem>
+                  <MenuItem value="slice">slice</MenuItem>
+                </TextField>
+
+                <TextField
+                  label="Meal"
+                  value={mealType}
+                  onChange={(e) => setMealType(e.target.value)}
+                  select
+                  fullWidth
+                  size="small"
+                >
+                  <MenuItem value="breakfast">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>🌅</span>
+                      <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Breakfast</Box>
+                      <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Brkfst</Box>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="lunch">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>🌞</span>
+                      <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Lunch</Box>
+                      <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Lunch</Box>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="dinner">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>🌙</span>
+                      <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Dinner</Box>
+                      <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Dinner</Box>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="snacks">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>🍎</span>
+                      <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Snacks</Box>
+                      <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Snacks</Box>
+                    </Box>
+                  </MenuItem>
+                </TextField>
+              </Stack>
+            </Stack>
 
             <Box display="flex" gap={1}>
               <Button
@@ -358,6 +389,7 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
                 startIcon={<QueueIcon />}
                 onClick={() => addToQueue()}
                 disabled={!currentInput.trim()}
+                size="small"
               >
                 Add to Queue
               </Button>

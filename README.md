@@ -1,230 +1,162 @@
-# Nutrition App MVP 🥗
+# Fuel IQ 🔥
 
-A comprehensive nutrition tracking and analysis application with AI-powered insights, built with React and Node.js.
+**Eat Smarter. Live Sharper.**
 
-🚀 **Status**: Deployed to Render (pending MongoDB Atlas network access configuration)
+An intelligent nutrition platform that turns food and health data into personalized performance guidance. Built with React and Node.js, powered by AI.
 
-## 🚀 Features
+## 🧠 Mission
 
-### Core Functionality
-- **Food Logging**: Track meals with detailed nutritional information (40+ nutrients)
-- **AI-Powered Food Lookup**: Intelligent food search and nutrition estimation
-- **Weight Goal Management**: Set and track weight loss/gain goals with timeline
-- **Personalized Calorie Targets**: BMR-based calculations with activity level adjustments
-- **Health Metrics**: BMI tracking and comprehensive health insights
+To empower individuals with intelligent, actionable insights into how food, biomarkers, and lifestyle affect their energy, health, and longevity.
 
-### AI Analysis
-- **Nutrition Analysis**: Detailed dietary pattern analysis with insights and recommendations
-- **Bloodwork Analysis**: Lab result interpretation and health recommendations
-- **Correlation Analysis**: Relationship analysis between diet and health markers
-- **Goal-Oriented Recommendations**: AI factors in weight goals and activity levels
+## 🎯 Positioning
 
-### Health Tracking
-- **Bloodwork Management**: Upload and track lab results over time
-- **Profile Management**: Comprehensive health profile with goals and restrictions
-- **Dashboard**: Real-time nutrition summary with progress tracking
+Fuel IQ is the intelligent nutrition platform that turns food and health data into personalized performance guidance. It's not just tracking—it's transformation.
 
-## 🛠️ Technology Stack
+## ✨ Core Features
 
-### Frontend
-- **React 18** with TypeScript
-- **Material-UI (MUI)** for modern, responsive design
-- **React Hook Form** for form management
-- **React Router** for navigation
-- **Axios** for API communication
+- **Smart Food Tracking**: AI-powered nutrition analysis with 40+ nutrients
+- **Intelligent Food Lookup**: Advanced food search and nutrition estimation
+- **Personal Food Database**: Your own searchable food history with auto-suggestions  
+- **Supplement Management**: Track vitamins, supplements, and medications
+- **Bloodwork Analysis**: Upload lab results for AI-powered health correlations
+- **Performance Analytics**: Personalized insights connecting diet to health metrics
+- **Mobile-First Design**: Optimized for iPhone and Android devices
 
-### Backend
-- **Node.js** with Express
-- **TypeScript** for type safety
-- **MongoDB** with Mongoose ODM
-- **JWT** authentication
-- **OpenAI API** for intelligent analysis
-- **Bcrypt** for password security
+## 🚀 Technology Stack
 
-### AI Integration
-- **OpenAI GPT-4o-mini** for nutrition analysis
-- **Custom prompts** for health-focused recommendations
-- **Conservative BMR calculations** for sustainable weight management
+**Frontend:**
+- React 18 with TypeScript
+- Material-UI with custom Fuel IQ design system
+- React Router for navigation
+- Inter font for modern typography
 
-## 📋 Prerequisites
+**Backend:**
+- Node.js with Express
+- MongoDB with Mongoose
+- **OpenAI GPT-4o-mini** for intelligent analysis
+- JWT authentication
 
-- Node.js (v14 or higher)
-- MongoDB (local or cloud instance)
-- OpenAI API key
+**Design System:**
+- Primary: Deep electric blue (#0066cc) - trust + tech
+- Accent: Neon green (#00e676) - energy + life  
+- Neutral: Slate gray (#2e2e2e) and off-white (#f8f9fa)
 
-## 🚀 Quick Start
+## 📱 Installation
 
-### 1. Clone the Repository
 ```bash
-git clone https://github.com/Babylon77/Nutrition-app.git
-cd Nutrition-app
-```
-
-### 2. Install Dependencies
-```bash
-# Install root dependencies (for concurrent running)
-npm install
+git clone https://github.com/Babylon77/fuel-iq.git
+cd fuel-iq
 
 # Install backend dependencies
-cd backend
 npm install
 
 # Install frontend dependencies
-cd ../frontend
+cd frontend
 npm install
+cd ..
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your configurations
 ```
 
-### 3. Environment Setup
+## 🔧 Environment Setup
 
-Create `.env` file in the backend directory:
+Create a `.env` file in the root directory:
+
 ```env
+# Database
+MONGODB_URI=mongodb://localhost:27017/fuel-iq
+
+# JWT Secret
+JWT_SECRET=your-jwt-secret-here
+
+# OpenAI API
+OPENAI_API_KEY=your-openai-api-key
+
+# App Settings
 NODE_ENV=development
-PORT=5001
-MONGODB_URI=mongodb://localhost:27017/nutrition-app
-JWT_SECRET=your-jwt-secret-key-here
-OPENAI_API_KEY=your-openai-api-key-here
+PORT=5000
 ```
 
-### 4. Start the Application
+## 🏃‍♂️ Running the Application
 
-From the root directory:
+**Development mode (both frontend and backend):**
 ```bash
-# Start both backend and frontend
-npm start
-
-# Or start separately:
-# Backend: cd backend && npm run dev
-# Frontend: cd frontend && npm start
+npm run dev
 ```
 
-The application will be available at:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:5001
+**Backend only:**
+```bash
+npm run server
+```
 
-## 📖 Usage Guide
+**Frontend only:**
+```bash
+npm run client
+```
 
-### Getting Started
-1. **Register/Login**: Create an account or sign in
-2. **Complete Profile**: Add personal information, weight goals, and activity level
-3. **Log Food**: Start tracking your meals using the AI-powered food lookup
-4. **Set Goals**: Define weight targets with realistic timeframes
-5. **Track Progress**: Monitor your nutrition on the dashboard
-6. **Get Insights**: Generate AI analysis for personalized recommendations
+Visit `http://localhost:3000` to access Fuel IQ.
 
-### Weight Goal System
-- Set current weight → target weight → timeframe (weeks)
-- System calculates daily calorie targets using conservative BMR formulas
-- Activity level multipliers: Sedentary (1.15) to Extra Active (1.75)
-- Safety caps: Maximum 2 lbs/week weight loss, minimum calories (1200-1500)
+## 📊 Getting Started
 
-### AI Analysis
-- **Nutrition Analysis**: 3-7 days of food logs recommended for best insights
-- **Activity Integration**: AI factors in your stated activity level
-- **Goal Alignment**: Recommendations align with weight loss/gain objectives
-- **Conservative Approach**: Sustainable 1-2 lbs/week recommendations
+1. **Create Account**: Sign up with your email and basic info
+2. **Log Your First Meal**: Use our AI-powered food search
+3. **Upload Bloodwork**: Add lab results for health correlations
+4. **Track Progress**: Monitor your nutrition and health metrics
+5. **Get Insights**: Receive personalized AI analysis and recommendations
 
-## 🏗️ Architecture
+## 🔮 Key Features
+
+- **Performance Analytics**: 3-7 days of food logs recommended for best insights
+- **Smart Recommendations**: AI-powered suggestions based on your unique data
+- **Health Correlations**: Connect nutrition patterns to biomarker changes
+- **Mobile Optimized**: Works seamlessly on all devices
+
+## 📂 Project Structure
 
 ```
-Nutrition-app/
-├── backend/               # Node.js/Express API
+fuel-iq/
+├── frontend/           # React frontend application
 │   ├── src/
-│   │   ├── controllers/   # Route handlers
-│   │   ├── models/        # MongoDB schemas
-│   │   ├── routes/        # API endpoints
-│   │   ├── services/      # Business logic (AI, etc.)
-│   │   ├── middleware/    # Auth, validation
-│   │   └── utils/         # Helpers
-│   └── package.json
-├── frontend/              # React application
-│   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   ├── pages/         # Route components
-│   │   ├── contexts/      # React contexts
-│   │   ├── services/      # API service layer
-│   │   ├── types/         # TypeScript definitions
-│   │   └── utils/         # Helper functions
-│   └── package.json
-└── package.json          # Root scripts
+│   │   ├── components/ # Reusable UI components
+│   │   ├── pages/      # Main application pages
+│   │   ├── styles/     # Fuel IQ design system
+│   │   └── types/      # TypeScript type definitions
+├── backend/           # Node.js backend API
+│   ├── models/        # MongoDB models
+│   ├── routes/        # API endpoints
+│   └── middleware/    # Custom middleware
+└── docs/             # Documentation and planning
 ```
 
-## 🔒 Security Features
+## 🎨 Design Philosophy
 
-- JWT-based authentication
-- Password hashing with bcrypt
-- Protected API routes
-- Input validation and sanitization
-- CORS configuration
-- Environment variable protection
+**Sharp, confident, friendly** - Like a performance coach meets data scientist.
 
-## 🧪 MVP Scope
-
-This MVP includes:
-- ✅ Complete user authentication system
-- ✅ Comprehensive food logging with 40+ nutrients
-- ✅ AI-powered food lookup and nutrition estimation
-- ✅ Weight goal management with personalized calorie targets
-- ✅ Dashboard with real-time nutrition tracking
-- ✅ AI analysis with activity level integration
-- ✅ Bloodwork tracking and analysis
-- ✅ Profile management with health metrics
-- ✅ BMI calculation and health insights
-
-## 🔄 Development Status
-
-**Current Version**: MVP v1.0.0
-
-### Recent Updates
-- Enhanced AI prompts to factor in activity levels
-- Conservative calorie calculation system
-- Weight goal integration with AI recommendations
-- Improved nutrition tracking with comprehensive micronutrients
-- Dashboard calorie targets aligned with weight goals
+- **Smart**: Intelligent insights, not just data
+- **Modern**: Clean, tech-forward interface  
+- **Performance-oriented**: Focus on actionable outcomes
+- **Proactive**: Anticipate user needs and goals
 
 ## 🤝 Contributing
 
-This is an MVP release. For contributions:
-
 1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 📝 License
+## 📈 Features in Development
 
-This project is licensed under the MIT License.
+- Multi-LLM analysis for second opinions
+- Advanced sleep and lifestyle tracking
+- Photo + voice food analysis
+- Barcode scanning for packaged foods
+- Enhanced bloodwork PDF extraction
 
-## 🆘 Support
-
-For issues or questions:
-- Open an issue on GitHub
-- Check the console logs for debugging information
-- Ensure OpenAI API key is properly configured
-- Verify MongoDB connection
-
-## 🏆 Acknowledgments
+## 🙏 Acknowledgments
 
 - OpenAI for AI-powered nutrition analysis
-- Material-UI for the component library
-- MongoDB for flexible data storage
-- The nutrition science community for BMR formulas and guidelines
-
-## 🚀 Deployment
-
-This app is configured for easy deployment on **Render**. See the detailed [Deployment Guide](./DEPLOYMENT.md) for step-by-step instructions.
-
-### Quick Deploy to Render
-
-1. Fork this repository
-2. Connect to Render
-3. Set environment variables
-4. Deploy!
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete instructions.
-
-## 📱 Development
-
----
-
-**Note**: This is an MVP (Minimum Viable Product) for user testing and feedback. Features and functionality will continue to evolve based on user needs and feedback. 
+- Material-UI for component library
+- The performance nutrition community for evidence-based insights 

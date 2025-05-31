@@ -27,6 +27,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import { NutritionSummary, BloodworkEntry, Analysis } from '../types';
+import CalorieGauge from '../components/visualizations/CalorieGauge';
+import MacroProgressBar from '../components/visualizations/MacroProgressBar';
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -43,7 +45,7 @@ export const Dashboard: React.FC = () => {
         setError('');
 
         // Fetch nutrition summary for last 7 days
-        const nutrition = await apiService.getNutritionSummary(7);
+        const nutrition = await apiService.getNutritionSummary(1);
         setNutritionSummary(nutrition);
 
         // Fetch recent bloodwork
@@ -81,7 +83,7 @@ export const Dashboard: React.FC = () => {
     const targetCalories = getSuggestedCalories() || nutritionSummary.goalCalories;
     if (!targetCalories) return 0;
     
-    return Math.min((nutritionSummary.averageCalories / targetCalories) * 100, 100);
+    return Math.min((nutritionSummary.totalCalories / targetCalories) * 100, 100);
   };
 
   const getSuggestedCalories = () => {
@@ -173,55 +175,82 @@ export const Dashboard: React.FC = () => {
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
                 <RestaurantIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Nutrition Summary (7 days)</Typography>
+                <Typography variant="h6">Today's Nutrition Summary</Typography>
               </Box>
               
               {nutritionSummary ? (
                 <Box>
-                  <Box mb={2}>
-                    <Typography variant="body2" color="text.secondary">
-                      Average Daily Calories
-                    </Typography>
-                    <Typography variant="h4">
-                      {Math.round(nutritionSummary.averageCalories)}
-                    </Typography>
-                    {(getSuggestedCalories() || nutritionSummary.goalCalories) && (
-                      <Box mt={1}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={calculateCalorieProgress()}
-                          color={getProgressColor(calculateCalorieProgress())}
-                          sx={{ height: 8, borderRadius: 4 }}
-                        />
-                        <Typography variant="caption" color="text.secondary">
-                          {getSuggestedCalories() ? (
-                            <>Goal: {getSuggestedCalories()} calories (weight goal)</>
-                          ) : (
-                            <>Goal: {nutritionSummary.goalCalories} calories</>
-                          )}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Box sx={{ flex: 1, textAlign: 'center' }}>
-                      <Typography variant="body2" color="text.secondary">Protein</Typography>
-                      <Typography variant="h6">{Math.round(nutritionSummary.totalProtein / nutritionSummary.daysLogged)}g</Typography>
-                    </Box>
-                    <Box sx={{ flex: 1, textAlign: 'center' }}>
-                      <Typography variant="body2" color="text.secondary">Carbs</Typography>
-                      <Typography variant="h6">{Math.round(nutritionSummary.totalCarbs / nutritionSummary.daysLogged)}g</Typography>
-                    </Box>
-                    <Box sx={{ flex: 1, textAlign: 'center' }}>
-                      <Typography variant="body2" color="text.secondary">Fat</Typography>
-                      <Typography variant="h6">{Math.round(nutritionSummary.totalFat / nutritionSummary.daysLogged)}g</Typography>
+                  {/* Calorie Gauge */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
+                    <CalorieGauge
+                      current={nutritionSummary.averageCalories}
+                      goal={getSuggestedCalories() || nutritionSummary.goalCalories || 2000}
+                      size="md"
+                    />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Today's Calories
+                      </Typography>
+                      <Typography variant="h4">
+                        {Math.round(nutritionSummary.averageCalories)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {getSuggestedCalories() ? (
+                          <>Goal: {getSuggestedCalories()} calories (weight goal)</>
+                        ) : (
+                          <>Goal: {nutritionSummary.goalCalories} calories</>
+                        )}
+                      </Typography>
                     </Box>
                   </Box>
-                  
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-                    {nutritionSummary.daysLogged} days logged
-                  </Typography>
+
+                  {/* Macro Progress Bar */}
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      Today's Macronutrient Breakdown
+                    </Typography>
+                    <MacroProgressBar
+                      data={{
+                        protein: { 
+                          current: Math.round(nutritionSummary.totalProtein), 
+                          goal: Math.round((nutritionSummary.totalCalories * 0.25) / 4) // 25% of calories from protein
+                        },
+                        carbs: { 
+                          current: Math.round(nutritionSummary.totalCarbs), 
+                          goal: Math.round((nutritionSummary.totalCalories * 0.45) / 4) // 45% of calories from carbs
+                        },
+                        fat: { 
+                          current: Math.round(nutritionSummary.totalFat), 
+                          goal: Math.round((nutritionSummary.totalCalories * 0.30) / 9) // 30% of calories from fat
+                        }
+                      }}
+                      height="md"
+                      animated={true}
+                    />
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Chip 
+                      label={"Today"} 
+                      color="primary" 
+                      size="small"
+                    />
+                    <Chip 
+                      label={`${Math.round(nutritionSummary.totalProtein)}g protein`} 
+                      variant="outlined" 
+                      size="small"
+                    />
+                    <Chip 
+                      label={`${Math.round(nutritionSummary.totalCarbs)}g carbs`} 
+                      variant="outlined" 
+                      size="small"
+                    />
+                    <Chip 
+                      label={`${Math.round(nutritionSummary.totalFat)}g fat`} 
+                      variant="outlined" 
+                      size="small"
+                    />
+                  </Box>
                 </Box>
               ) : (
                 <Box textAlign="center" py={3}>

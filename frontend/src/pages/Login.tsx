@@ -72,11 +72,35 @@ export const Login: React.FC = () => {
             }}
           >
             <RestaurantIcon sx={{ fontSize: 40, color: 'primary.main', mr: 1 }} />
-            <Typography component="h1" variant="h4" color="primary">
-              NutriTrack
+            <Typography 
+              variant="h3" 
+              component="h1" 
+              gutterBottom 
+              align="center"
+              sx={{ 
+                fontWeight: 700,
+                color: 'primary.main',
+                mb: 1,
+                fontFamily: 'Inter, sans-serif'
+              }}
+            >
+              Fuel IQ
             </Typography>
           </Box>
           
+          <Typography 
+            variant="subtitle1" 
+            align="center" 
+            color="text.secondary"
+            sx={{ 
+              mb: 4,
+              fontStyle: 'italic',
+              fontSize: '1.1rem'
+            }}
+          >
+            Eat Smarter. Live Sharper.
+          </Typography>
+
           <Typography component="h2" variant="h5" sx={{ mb: 3 }}>
             Sign In
           </Typography>

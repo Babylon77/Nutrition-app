@@ -1,0 +1,203 @@
+/* Bottom Navigation Styles - Sprint 2.5 Modern UI/UX */
+
+.bottom-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-index-fixed);
+  background: var(--color-bg-card);
+  border-top: 1px solid var(--color-border-light);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.bottom-nav-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: var(--bottom-nav-height);
+  max-width: var(--breakpoint-lg);
+  margin: 0 auto;
+  padding: 0 var(--spacing-sm);
+  position: relative;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  min-height: 48px; /* Touch target */
+  min-width: 48px;
+  transition: all var(--transition-fast);
+  color: var(--nav-color, var(--color-text-light));
+  position: relative;
+  flex: 1;
+}
+
+.nav-item:hover {
+  transform: translateY(-1px);
+}
+
+.nav-item--active {
+  color: var(--nav-color);
+}
+
+.nav-icon {
+  position: relative;
+  margin-bottom: var(--spacing-xs);
+}
+
+.nav-icon-svg {
+  width: 24px;
+  height: 24px;
+  transition: all var(--transition-fast);
+}
+
+.nav-item--active .nav-icon-svg {
+  transform: scale(1.1);
+}
+
+.nav-indicator {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: var(--nav-color);
+  border-radius: var(--border-radius-full);
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.nav-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  text-align: center;
+  transition: opacity var(--transition-fast);
+}
+
+.nav-item:not(.nav-item--active) .nav-label {
+  opacity: 0.7;
+}
+
+/* Quick Add Floating Action Button */
+.quick-add-fab {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 56px;
+  background: var(--color-accent-yellow);
+  border: 3px solid var(--color-bg-card);
+  border-radius: var(--border-radius-full);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+  transition: all var(--transition-fast);
+  z-index: 1;
+}
+
+.quick-add-fab:hover {
+  transform: translateX(-50%) translateY(-2px) scale(1.05);
+  box-shadow: var(--shadow-xl);
+  background: var(--color-accent-yellow-light);
+}
+
+.quick-add-fab:active {
+  transform: translateX(-50%) scale(0.95);
+}
+
+.fab-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-text-primary);
+  stroke-width: 2.5;
+}
+
+/* Safe area for iOS devices */
+.bottom-nav-safe-area {
+  height: var(--bottom-nav-safe-area);
+  background: var(--color-bg-card);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .bottom-nav-container {
+    padding: 0 var(--spacing-xs);
+  }
+  
+  .nav-item {
+    padding: var(--spacing-xs);
+    min-width: 44px;
+  }
+  
+  .nav-label {
+    font-size: 10px;
+  }
+  
+  .quick-add-fab {
+    width: 50px;
+    height: 50px;
+    top: -18px;
+  }
+  
+  .fab-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Large screens - center and constrain width */
+@media (min-width: 1024px) {
+  .bottom-nav-container {
+    max-width: 600px; /* Prevent nav from being too spread out */
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .nav-item,
+  .nav-icon-svg,
+  .quick-add-fab,
+  .nav-indicator {
+    transition: none;
+  }
+  
+  .nav-indicator {
+    animation: none;
+  }
+}
+
+/* Focus states for keyboard navigation */
+.nav-item:focus-visible {
+  outline: 2px solid var(--color-primary-green);
+  outline-offset: 2px;
+  border-radius: var(--border-radius-sm);
+}
+
+.quick-add-fab:focus-visible {
+  outline: 2px solid var(--color-primary-green);
+  outline-offset: 2px;
+} 

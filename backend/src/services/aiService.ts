@@ -291,8 +291,10 @@ Please provide a JSON response with the following structure:
 }
 
 COMPREHENSIVE ANALYSIS FOCUS AREAS:
-- Food macronutrient balance (protein, carbs, fat ratios) from dietary sources
-- Supplement regimen effectiveness and appropriateness 
+- Food macronutrient balance (protein, carbs, fat ratios) from dietary sources.  Use modern ratios for target weight and activity level.
+- Supplement regimen effectiveness and appropriateness in the context of total nutrient intake.  
+- Focus supplments analysis on immune health, gut health, and overall health.  
+- Focus analysis on user's personal information, goals, allergies and dietary restrictions.  Make sure it feels personalized and tailored to the user.
 - Total nutrient intake combining food + supplements (avoid double-counting)
 - Potential nutrient gaps that supplements are addressing vs. remaining deficiencies
 - Supplement timing and absorption optimization recommendations
@@ -309,7 +311,8 @@ COMPREHENSIVE ANALYSIS FOCUS AREAS:
 CRITICAL GUIDELINES:
 - Return ONLY valid JSON, no markdown formatting or code blocks
 - Confidence should be 30-50 for single day, 60-80 for 2-7 days, 80-95 for week+ data
-- Provide exactly 5 insights and 5 recommendations
+- Provide exactly 5 insights and 5 recommendations.  
+- Insights and reccomendations should be as short as possible.  Recommendations should be of the highest impact, actionable and specific.
 - Use the CALCULATED NUTRITION TOTALS provided above - do not manually recalculate from raw food data
 - Base your analysis on the daily averages: ${actualDays > 0 ? Math.round((nutritionData.totalCalories || 0) / actualDays) : 0} cal/day, ${actualDays > 0 ? Math.round((nutritionData.totalProtein || 0) / actualDays) : 0}g protein/day, etc.
 - Consider BOTH food and supplement sources for all nutrients
@@ -321,7 +324,7 @@ CRITICAL GUIDELINES:
 - For extensive data: identify trends and long-term optimization strategies
 - If weight goals are specified, prioritize recommendations that support those goals
 - If activity level is specified, factor it into calorie recommendations and energy balance assessments
-- Address supplement-food synergies and potential conflicts
+- Address supplement-food synergies and potential conflicts. Specifically address interaction between supplements, such as vitamins and fiber.
 - Recommend supplement timing optimizations (with/without food, spacing, etc.)
 - Always reference the provided calculated totals, not individual food items
 `;
@@ -455,6 +458,9 @@ Important:
 - Provide exactly 5 insights and 5 recommendations
 - Focus on lab values${isMultipleTests ? ', trends,' : ''} and health implications
 - Be specific and actionable in your recommendations
+- Your analysis should be cutting edge and up to date.  Use the latest research and evidence based practices.
+- You should critically evaluate the data and provide a detailed analysis of the data.  Do not just provide a summary of the data.
+- Identify the impact of confounding factors, such as age, gender, weight, and also multiplicative effects to risk factors.  For example, if a user is has high LDL, and Lipoprotein(a) is high, then the impact of LDL is amplified.
 - Include specific lab values and reference ranges when relevant
 - ${isMultipleTests ? 'Emphasize trend analysis and changes over time' : 'Focus on current status and future monitoring'}
 - Always recommend consulting healthcare professionals for medical advice
@@ -557,13 +563,16 @@ Please provide a JSON response with the following structure:
 Important: 
 - Return ONLY valid JSON, no markdown formatting or code blocks
 - Confidence should be a number between 0-100 (percentage)
-- Provide exactly 5 insights and 5 recommendations
+- Provide exactly 5 insights and 5 recommendations. Keep insights and recommendations short and concise.  
+- Recommendations should be of the highest impact, actionable and specific. They should focus on actions the user can take to improve their health.
 - Focus on correlations between diet and lab values
-- Be specific and actionable in your recommendations
+- Be specific and actionable in your recommendations.  Recommendations should be of the highest impact, actionable and specific.
 - Include specific nutritional values and lab results when relevant
-- Explain potential mechanisms behind correlations
+- Explain potential mechanisms behind correlations.  Search deep and look for all confounding factors, multiplicative effects, and other factors that could be influencing the correlation.
 - Summary should highlight the most significant correlations
-- Detailed analysis should be scientifically grounded and educational
+- Detailed analysis should be scientifically grounded and educational, but based on modern research and evidence based practices.  
+- Do not make up information, but be bold, while explaining uncertainty.  
+- When there are debates in the literature, explain the debate and provide your own opinion.  Do not just say "there is no evidence to support this" or "there is evidence to support this".  Explain the evidence and your opinion.
 `;
 
     let response: string = '';

@@ -1,7 +1,8 @@
 {
-  "name": "nutrition-app",
+  "name": "fuel-iq",
   "version": "1.0.0",
-  "description": "AI-powered nutrition tracking and bloodwork analysis application",
+  "description": "Fuel IQ - Intelligent nutrition platform that turns food and health data into personalized performance guidance",
+  "main": "server.js",
   "scripts": {
     "dev:frontend": "cd frontend && npm start",
     "dev:backend": "cd backend && npm run dev",
@@ -15,20 +16,27 @@
     "start": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up",
-    "docker:down": "docker-compose down"
+    "docker:down": "docker-compose down",
+    "server": "nodemon server.js",
+    "client": "npm start --prefix frontend",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "build": "npm run build --prefix frontend",
+    "heroku-postbuild": "npm install --prefix frontend && npm run build --prefix frontend"
   },
   "keywords": [
+    "fuel-iq",
     "nutrition",
     "health",
     "ai",
     "bloodwork",
     "tracking",
-    "react",
-    "nodejs",
-    "mongodb"
+    "analytics",
+    "personalized",
+    "performance",
+    "intelligence"
   ],
-  "author": "Nutrition App Team",
-  "license": "MIT",
+  "author": "Fuel IQ Team",
+  "license": "ISC",
   "devDependencies": {
     "concurrently": "^8.2.2"
   }

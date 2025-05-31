@@ -372,8 +372,8 @@ export const Profile: React.FC = () => {
 
       {/* Profile Information */}
       <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
             <Typography variant="h6">Personal Information</Typography>
             <Box>
               {editing ? (
@@ -408,9 +408,9 @@ export const Profile: React.FC = () => {
           </Box>
 
           <form onSubmit={handleSubmit(onSubmit)}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 4, sm: 5 } }}>
               {/* Basic Information */}
-              <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' } }}>
                 <Controller
                   name="firstName"
                   control={control}
@@ -423,7 +423,8 @@ export const Profile: React.FC = () => {
                       error={!!errors.firstName}
                       helperText={errors.firstName?.message}
                       fullWidth
-                      size="small"
+                      variant="outlined"
+                      margin="normal"
                     />
                   )}
                 />
@@ -440,7 +441,8 @@ export const Profile: React.FC = () => {
                       error={!!errors.lastName}
                       helperText={errors.lastName?.message}
                       fullWidth
-                      size="small"
+                      variant="outlined"
+                      margin="normal"
                     />
                   )}
                 />
@@ -450,16 +452,22 @@ export const Profile: React.FC = () => {
                   value={user?.email || ''}
                   disabled
                   fullWidth
-                  size="small"
+                  variant="outlined"
+                  margin="normal"
                 />
               </Box>
 
-              <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' } }}>
                 <Controller
                   name="gender"
                   control={control}
                   render={({ field }) => (
-                    <FormControl fullWidth disabled={!editing} size="small">
+                    <FormControl 
+                      fullWidth 
+                      disabled={!editing}
+                      variant="outlined"
+                      margin="normal"
+                    >
                       <InputLabel>Gender</InputLabel>
                       <Select {...field} label="Gender" error={!!errors.gender}>
                         <MenuItem value="male">Male</MenuItem>
@@ -487,7 +495,8 @@ export const Profile: React.FC = () => {
                       helperText={errors.heightFeet?.message}
                       inputProps={{ min: 1, max: 8, step: 1 }}
                       fullWidth
-                      size="small"
+                      variant="outlined"
+                      margin="normal"
                     />
                   )}
                 />
@@ -509,13 +518,14 @@ export const Profile: React.FC = () => {
                       helperText={errors.heightInches?.message}
                       inputProps={{ min: 0, max: 11, step: 1 }}
                       fullWidth
-                      size="small"
+                      variant="outlined"
+                      margin="normal"
                     />
                   )}
                 />
               </Box>
 
-              <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' } }}>
                 <Controller
                   name="weight"
                   control={control}
@@ -526,14 +536,15 @@ export const Profile: React.FC = () => {
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="Weight (pounds)"
+                      label="Current Weight (lbs)"
                       type="number"
                       disabled={!editing}
                       error={!!errors.weight}
                       helperText={errors.weight?.message}
                       inputProps={{ min: 50, max: 1000, step: 0.1 }}
                       fullWidth
-                      size="small"
+                      variant="outlined"
+                      margin="normal"
                     />
                   )}
                 />
@@ -548,14 +559,15 @@ export const Profile: React.FC = () => {
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="Weight Goal (pounds)"
+                      label="Goal Weight (lbs)"
                       type="number"
                       disabled={!editing}
                       error={!!errors.weightGoal}
                       helperText={errors.weightGoal?.message}
                       inputProps={{ min: 50, max: 1000, step: 0.1 }}
                       fullWidth
-                      size="small"
+                      variant="outlined"
+                      margin="normal"
                     />
                   )}
                 />
@@ -570,26 +582,33 @@ export const Profile: React.FC = () => {
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="Weight Goal Timeframe (weeks)"
+                      label="Timeframe (weeks)"
                       type="number"
                       disabled={!editing}
                       error={!!errors.weightGoalTimeframe}
                       helperText={errors.weightGoalTimeframe?.message}
                       inputProps={{ min: 1, max: 52, step: 1 }}
                       fullWidth
-                      size="small"
+                      variant="outlined"
+                      margin="normal"
                     />
                   )}
                 />
               </Box>
 
-              <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, flexDirection: 'column' }}>
                 <Controller
                   name="activityLevel"
                   control={control}
                   rules={{ required: 'Activity level is required' }}
                   render={({ field }) => (
-                    <FormControl fullWidth disabled={!editing} size="small">
+                    <FormControl 
+                      fullWidth 
+                      disabled={!editing}
+                      variant="outlined"
+                      margin="normal"
+                      sx={{ maxWidth: { xs: '100%', sm: 400 } }}
+                    >
                       <InputLabel>Activity Level</InputLabel>
                       <Select {...field} label="Activity Level" error={!!errors.activityLevel}>
                         {activityLevels.map((level) => (
@@ -603,78 +622,98 @@ export const Profile: React.FC = () => {
                 />
               </Box>
 
-              <Divider />
+              <Divider sx={{ my: 2 }} />
 
               {/* Health Information */}
-              <Typography variant="h6">Health Information</Typography>
+              <Typography variant="h6" sx={{ mb: 1 }}>Health Information</Typography>
 
-              <Controller
-                name="healthGoals"
-                control={control}
-                render={({ field }) => (
-                  <Autocomplete
-                    {...field}
-                    multiple
-                    options={healthGoalOptions}
-                    disabled={!editing}
-                    renderTags={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip variant="outlined" label={option} {...getTagProps({ index })} />
-                      ))
-                    }
-                    renderInput={(params) => (
-                      <TextField {...params} label="Health Goals" placeholder="Select goals" />
-                    )}
-                    onChange={(_, value) => field.onChange(value)}
-                  />
-                )}
-              />
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, sm: 3 } }}>
+                <Controller
+                  name="healthGoals"
+                  control={control}
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      multiple
+                      options={healthGoalOptions}
+                      disabled={!editing}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip variant="outlined" label={option} {...getTagProps({ index })} />
+                        ))
+                      }
+                      renderInput={(params) => (
+                        <TextField 
+                          {...params} 
+                          label="Health Goals" 
+                          placeholder="Select your health goals"
+                          variant="outlined"
+                          margin="normal"
+                        />
+                      )}
+                      onChange={(_, value) => field.onChange(value)}
+                    />
+                  )}
+                />
 
-              <Controller
-                name="allergies"
-                control={control}
-                render={({ field }) => (
-                  <Autocomplete
-                    {...field}
-                    multiple
-                    options={allergyOptions}
-                    freeSolo
-                    disabled={!editing}
-                    renderTags={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip variant="outlined" label={option} color="error" {...getTagProps({ index })} />
-                      ))
-                    }
-                    renderInput={(params) => (
-                      <TextField {...params} label="Allergies" placeholder="Select or type allergies" />
-                    )}
-                    onChange={(_, value) => field.onChange(value)}
-                  />
-                )}
-              />
+                <Controller
+                  name="allergies"
+                  control={control}
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      multiple
+                      options={allergyOptions}
+                      freeSolo
+                      disabled={!editing}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip variant="outlined" label={option} color="error" {...getTagProps({ index })} />
+                        ))
+                      }
+                      renderInput={(params) => (
+                        <TextField 
+                          {...params} 
+                          label="Allergies" 
+                          placeholder="Select or type your allergies"
+                          variant="outlined"
+                          margin="normal"
+                        />
+                      )}
+                      onChange={(_, value) => field.onChange(value)}
+                    />
+                  )}
+                />
 
-              <Controller
-                name="dietaryRestrictions"
-                control={control}
-                render={({ field }) => (
-                  <Autocomplete
-                    {...field}
-                    multiple
-                    options={dietaryRestrictionOptions}
-                    freeSolo
-                    disabled={!editing}
-                    renderTags={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip variant="outlined" label={option} color="primary" {...getTagProps({ index })} />
-                      ))
-                    }
-                    renderInput={(params) => (
-                      <TextField {...params} label="Dietary Restrictions" placeholder="Select or type restrictions" />
-                    )}
-                    onChange={(_, value) => field.onChange(value)}
-                  />
-                )}
-              />
+                <Controller
+                  name="dietaryRestrictions"
+                  control={control}
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      multiple
+                      options={dietaryRestrictionOptions}
+                      freeSolo
+                      disabled={!editing}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip variant="outlined" label={option} color="primary" {...getTagProps({ index })} />
+                        ))
+                      }
+                      renderInput={(params) => (
+                        <TextField 
+                          {...params} 
+                          label="Dietary Restrictions" 
+                          placeholder="Select or type your dietary restrictions"
+                          variant="outlined"
+                          margin="normal"
+                        />
+                      )}
+                      onChange={(_, value) => field.onChange(value)}
+                    />
+                  )}
+                />
+              </Box>
             </Box>
           </form>
         </CardContent>
@@ -697,7 +736,6 @@ export const Profile: React.FC = () => {
                   {bmiInfo && (
                     <Chip
                       label={bmiInfo.category}
-                      size="small"
                       color={bmiInfo.color as any}
                     />
                   )}
@@ -775,6 +813,9 @@ export const Profile: React.FC = () => {
                     type="password"
                     error={!!passwordErrors.currentPassword}
                     helperText={passwordErrors.currentPassword?.message}
+                    variant="outlined"
+                    margin="normal"
+                    fullWidth
                   />
                 )}
               />
@@ -793,6 +834,9 @@ export const Profile: React.FC = () => {
                     type="password"
                     error={!!passwordErrors.newPassword}
                     helperText={passwordErrors.newPassword?.message}
+                    variant="outlined"
+                    margin="normal"
+                    fullWidth
                   />
                 )}
               />
@@ -808,6 +852,9 @@ export const Profile: React.FC = () => {
                     type="password"
                     error={!!passwordErrors.confirmPassword}
                     helperText={passwordErrors.confirmPassword?.message}
+                    variant="outlined"
+                    margin="normal"
+                    fullWidth
                   />
                 )}
               />

@@ -175,6 +175,32 @@ const getNutrientColor = (current: number, recommended: number, isUpperLimit: bo
   }
 };
 
+const getNutrientColorStyle = (current: number, recommended: number, isUpperLimit: boolean = false) => {
+  const color = getNutrientColor(current, recommended, isUpperLimit);
+  switch (color) {
+    case 'success':
+      return { 
+        backgroundColor: 'var(--color-primary-green)', 
+        color: 'white',
+        '&:hover': { backgroundColor: 'var(--color-primary-green-dark)' }
+      };
+    case 'warning':
+      return { 
+        backgroundColor: 'var(--color-accent-yellow)', 
+        color: 'var(--color-text-primary)',
+        '&:hover': { backgroundColor: 'var(--color-accent-yellow-dark)' }
+      };
+    case 'error':
+      return { 
+        backgroundColor: 'var(--color-error)', 
+        color: 'white',
+        '&:hover': { backgroundColor: 'var(--color-error)' }
+      };
+    default:
+      return {};
+  }
+};
+
 export const FoodLog: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [foodItems, setFoodItems] = useState<EnhancedFoodItem[]>([]);
@@ -1093,7 +1119,16 @@ export const FoodLog: React.FC = () => {
                           <Box mt={0.5}>
                             <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
                               {(item.nutrition.saturatedFat || 0) > 0 && (
-                                <Chip label={`${(item.nutrition.saturatedFat || 0).toFixed(1)}g saturated`} size="small" variant="outlined" />
+                                <Chip 
+                                  label={`Sat: ${(item.nutrition.saturatedFat || 0).toFixed(1)}g`} 
+                                  size="small" 
+                                  variant="outlined"
+                                  sx={{ 
+                                    fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                                    height: { xs: '20px', sm: '24px' },
+                                    ...getNutrientColorStyle(item.nutrition.saturatedFat, rdv.saturatedFat, true)
+                                  }}
+                                />
                               )}
                               {(item.nutrition.monounsaturatedFat || 0) > 0 && (
                                 <Chip label={`${(item.nutrition.monounsaturatedFat || 0).toFixed(1)}g mono`} size="small" variant="outlined" />
@@ -1102,16 +1137,42 @@ export const FoodLog: React.FC = () => {
                                 <Chip label={`${(item.nutrition.polyunsaturatedFat || 0).toFixed(1)}g poly`} size="small" variant="outlined" />
                               )}
                               {(item.nutrition.omega3 || 0) > 0 && (
-                                <Chip label={`${(item.nutrition.omega3 || 0).toFixed(0)}mg ω-3`} size="small" />
+                                <Chip 
+                                  label={`ω-3: ${Math.round(item.nutrition.omega3 || 0)}mg`} 
+                                  size="small"
+                                  sx={{ 
+                                    fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                                    height: { xs: '20px', sm: '24px' },
+                                    ...getNutrientColorStyle(item.nutrition.omega3, rdv.omega3)
+                                  }}
+                                />
                               )}
                               {(item.nutrition.omega6 || 0) > 0 && (
                                 <Chip label={`${(item.nutrition.omega6 || 0).toFixed(0)}mg ω-6`} size="small" />
                               )}
                               {(item.nutrition.transFat || 0) > 0 && (
-                                <Chip label={`${(item.nutrition.transFat || 0).toFixed(1)}g trans`} size="small" color="error" />
+                                <Chip 
+                                  label={`Trans: ${(item.nutrition.transFat || 0).toFixed(1)}g`} 
+                                  size="small"
+                                  sx={{ 
+                                    fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                                    height: { xs: '20px', sm: '24px' },
+                                    backgroundColor: 'var(--color-error)', 
+                                    color: 'white',
+                                    '&:hover': { backgroundColor: 'var(--color-error)' }
+                                  }}
+                                />
                               )}
                               {(item.nutrition.cholesterol || 0) > 0 && (
-                                <Chip label={`${Math.round(item.nutrition.cholesterol || 0)}mg cholesterol`} size="small" />
+                                <Chip 
+                                  label={`Chol: ${Math.round(item.nutrition.cholesterol || 0)}mg`} 
+                                  size="small"
+                                  sx={{ 
+                                    fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                                    height: { xs: '20px', sm: '24px' },
+                                    ...getNutrientColorStyle(item.nutrition.cholesterol, rdv.cholesterol, true)
+                                  }}
+                                />
                               )}
                             </Stack>
                           </Box>
@@ -1189,7 +1250,7 @@ export const FoodLog: React.FC = () => {
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box>
         <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-          Enhanced Food Log
+          Fuel IQ Food Log
         </Typography>
         <Typography 
           variant="body1" 
@@ -1197,7 +1258,7 @@ export const FoodLog: React.FC = () => {
           gutterBottom
           sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' } }}
         >
-          AI-powered nutrition tracking with comprehensive micronutrient analysis
+          Intelligent nutrition tracking with personalized performance insights
         </Typography>
 
         {error && (
@@ -1217,7 +1278,7 @@ export const FoodLog: React.FC = () => {
 
         {/* Header */}
         <Card sx={{ mb: 3 }}>
-          <CardContent>
+          <CardContent sx={{ pt: 3 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
               <DatePicker
                 label="Select Date"
@@ -1227,8 +1288,19 @@ export const FoodLog: React.FC = () => {
                   textField: {
                     size: 'small',
                     sx: { 
+                      width: { xs: '140px', sm: '180px' },
+                      mt: 1,
                       '& .MuiInputBase-input': { 
                         fontSize: { xs: '0.75rem', sm: '0.875rem' } 
+                      }
+                    }
+                  },
+                  popper: {
+                    placement: 'bottom-start',
+                    sx: {
+                      zIndex: 1300,
+                      '& .MuiPaper-root': {
+                        marginTop: 1
                       }
                     }
                   }
@@ -1323,50 +1395,74 @@ export const FoodLog: React.FC = () => {
                     <Chip 
                       label={`Na: ${Math.round(totalNutrition.sodium || 0)}mg`} 
                       size="small"
-                      color={getNutrientColor(totalNutrition.sodium, rdv.sodium, true)}
-                      sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                      sx={{ 
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                        height: { xs: '20px', sm: '24px' },
+                        ...getNutrientColorStyle(totalNutrition.sodium, rdv.sodium, true)
+                      }}
                     />
                     <Chip 
                       label={`K: ${Math.round(totalNutrition.potassium || 0)}mg`} 
                       size="small"
-                      color={getNutrientColor(totalNutrition.potassium, rdv.potassium)}
-                      sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                      sx={{ 
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                        height: { xs: '20px', sm: '24px' },
+                        ...getNutrientColorStyle(totalNutrition.potassium, rdv.potassium)
+                      }}
                     />
                     <Chip 
                       label={`Ca: ${Math.round(totalNutrition.calcium || 0)}mg`} 
                       size="small"
-                      color={getNutrientColor(totalNutrition.calcium, rdv.calcium)}
-                      sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                      sx={{ 
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                        height: { xs: '20px', sm: '24px' },
+                        ...getNutrientColorStyle(totalNutrition.calcium, rdv.calcium)
+                      }}
                     />
                     <Chip 
                       label={`Mg: ${Math.round(totalNutrition.magnesium || 0)}mg`} 
                       size="small"
-                      color={getNutrientColor(totalNutrition.magnesium, rdv.magnesium)}
-                      sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                      sx={{ 
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                        height: { xs: '20px', sm: '24px' },
+                        ...getNutrientColorStyle(totalNutrition.magnesium, rdv.magnesium)
+                      }}
                     />
                     <Chip 
                       label={`C: ${(totalNutrition.vitaminC || 0).toFixed(1)}mg`} 
                       size="small"
-                      color={getNutrientColor(totalNutrition.vitaminC, rdv.vitaminC)}
-                      sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                      sx={{ 
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                        height: { xs: '20px', sm: '24px' },
+                        ...getNutrientColorStyle(totalNutrition.vitaminC, rdv.vitaminC)
+                      }}
                     />
                     <Chip 
                       label={`D: ${(totalNutrition.vitaminD || 0).toFixed(1)}mcg`} 
                       size="small"
-                      color={getNutrientColor(totalNutrition.vitaminD, rdv.vitaminD)}
-                      sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                      sx={{ 
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                        height: { xs: '20px', sm: '24px' },
+                        ...getNutrientColorStyle(totalNutrition.vitaminD, rdv.vitaminD)
+                      }}
                     />
                     <Chip 
                       label={`Fe: ${(totalNutrition.iron || 0).toFixed(1)}mg`} 
                       size="small"
-                      color={getNutrientColor(totalNutrition.iron, rdv.iron)}
-                      sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                      sx={{ 
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                        height: { xs: '20px', sm: '24px' },
+                        ...getNutrientColorStyle(totalNutrition.iron, rdv.iron)
+                      }}
                     />
                     <Chip 
                       label={`B12: ${(totalNutrition.vitaminB12 || 0).toFixed(1)}mcg`} 
                       size="small"
-                      color={getNutrientColor(totalNutrition.vitaminB12, rdv.vitaminB12)}
-                      sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                      sx={{ 
+                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                        height: { xs: '20px', sm: '24px' },
+                        ...getNutrientColorStyle(totalNutrition.vitaminB12, rdv.vitaminB12)
+                      }}
                     />
                   </Stack>
                 </Box>
@@ -1387,32 +1483,46 @@ export const FoodLog: React.FC = () => {
                           label={`Sat: ${(totalNutrition.saturatedFat || 0).toFixed(1)}g`} 
                           size="small" 
                           variant="outlined"
-                          color={getNutrientColor(totalNutrition.saturatedFat, rdv.saturatedFat, true)}
-                          sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                          sx={{ 
+                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                            height: { xs: '20px', sm: '24px' },
+                            ...getNutrientColorStyle(totalNutrition.saturatedFat, rdv.saturatedFat, true)
+                          }}
                         />
                       )}
                       {totalNutrition.omega3 > 0 && (
                         <Chip 
                           label={`ω-3: ${Math.round(totalNutrition.omega3 || 0)}mg`} 
                           size="small"
-                          color={getNutrientColor(totalNutrition.omega3, rdv.omega3)}
-                          sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                          sx={{ 
+                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                            height: { xs: '20px', sm: '24px' },
+                            ...getNutrientColorStyle(totalNutrition.omega3, rdv.omega3)
+                          }}
                         />
                       )}
                       {totalNutrition.transFat > 0 && (
                         <Chip 
                           label={`Trans: ${(totalNutrition.transFat || 0).toFixed(1)}g`} 
                           size="small"
-                          color="error"
-                          sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                          sx={{ 
+                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                            height: { xs: '20px', sm: '24px' },
+                            backgroundColor: 'var(--color-error)', 
+                            color: 'white',
+                            '&:hover': { backgroundColor: 'var(--color-error)' }
+                          }}
                         />
                       )}
                       {totalNutrition.cholesterol > 0 && (
                         <Chip 
                           label={`Chol: ${Math.round(totalNutrition.cholesterol || 0)}mg`} 
                           size="small"
-                          color={getNutrientColor(totalNutrition.cholesterol, rdv.cholesterol, true)}
-                          sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                          sx={{ 
+                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                            height: { xs: '20px', sm: '24px' },
+                            ...getNutrientColorStyle(totalNutrition.cholesterol, rdv.cholesterol, true)
+                          }}
                         />
                       )}
                     </Stack>
@@ -1435,32 +1545,44 @@ export const FoodLog: React.FC = () => {
                         <Chip 
                           label={`B1: ${(totalNutrition.thiamin || 0).toFixed(1)}mg`} 
                           size="small"
-                          color={getNutrientColor(totalNutrition.thiamin, rdv.thiamin)}
-                          sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                          sx={{ 
+                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                            height: { xs: '20px', sm: '24px' },
+                            ...getNutrientColorStyle(totalNutrition.thiamin, rdv.thiamin)
+                          }}
                         />
                       )}
                       {totalNutrition.riboflavin > 0.1 && (
                         <Chip 
                           label={`B2: ${(totalNutrition.riboflavin || 0).toFixed(1)}mg`} 
                           size="small"
-                          color={getNutrientColor(totalNutrition.riboflavin, rdv.riboflavin)}
-                          sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                          sx={{ 
+                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                            height: { xs: '20px', sm: '24px' },
+                            ...getNutrientColorStyle(totalNutrition.riboflavin, rdv.riboflavin)
+                          }}
                         />
                       )}
                       {totalNutrition.niacin > 1 && (
                         <Chip 
                           label={`B3: ${(totalNutrition.niacin || 0).toFixed(1)}mg`} 
                           size="small"
-                          color={getNutrientColor(totalNutrition.niacin, rdv.niacin)}
-                          sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                          sx={{ 
+                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                            height: { xs: '20px', sm: '24px' },
+                            ...getNutrientColorStyle(totalNutrition.niacin, rdv.niacin)
+                          }}
                         />
                       )}
                       {totalNutrition.folate > 10 && (
                         <Chip 
                           label={`Folate: ${Math.round(totalNutrition.folate || 0)}mcg`} 
                           size="small"
-                          color={getNutrientColor(totalNutrition.folate, rdv.folate)}
-                          sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                          sx={{ 
+                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                            height: { xs: '20px', sm: '24px' },
+                            ...getNutrientColorStyle(totalNutrition.folate, rdv.folate)
+                          }}
                         />
                       )}
                     </Stack>
@@ -1480,15 +1602,42 @@ export const FoodLog: React.FC = () => {
                   </Typography>
                   <Stack direction="row" spacing={{ xs: 1, sm: 2 }} flexWrap="wrap" gap={1}>
                     <Box display="flex" alignItems="center" gap={0.5}>
-                      <Chip label="Good" color="success" size="small" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '16px', sm: '20px' } }} />
+                      <Chip 
+                        label="Good" 
+                        size="small" 
+                        sx={{ 
+                          fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                          height: { xs: '16px', sm: '20px' },
+                          backgroundColor: 'var(--color-primary-green)', 
+                          color: 'white'
+                        }} 
+                      />
                       <Typography variant="caption" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>≥100%</Typography>
                     </Box>
                     <Box display="flex" alignItems="center" gap={0.5}>
-                      <Chip label="OK" color="warning" size="small" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '16px', sm: '20px' } }} />
+                      <Chip 
+                        label="OK" 
+                        size="small" 
+                        sx={{ 
+                          fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                          height: { xs: '16px', sm: '20px' },
+                          backgroundColor: 'var(--color-accent-yellow)', 
+                          color: 'var(--color-text-primary)'
+                        }} 
+                      />
                       <Typography variant="caption" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>70-99%</Typography>
                     </Box>
                     <Box display="flex" alignItems="center" gap={0.5}>
-                      <Chip label="Low" color="error" size="small" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' }, height: { xs: '16px', sm: '20px' } }} />
+                      <Chip 
+                        label="Low" 
+                        size="small" 
+                        sx={{ 
+                          fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
+                          height: { xs: '16px', sm: '20px' },
+                          backgroundColor: 'var(--color-error)', 
+                          color: 'white'
+                        }} 
+                      />
                       <Typography variant="caption" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>&lt;70%</Typography>
                     </Box>
                   </Stack>

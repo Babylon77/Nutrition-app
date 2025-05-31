@@ -396,14 +396,18 @@ export const SupplementsNew: React.FC = () => {
 
         {/* Today's Schedule */}
         <Card sx={{ mb: { xs: 2, sm: 3 } }}>
-          <CardContent sx={{ p: { xs: 1, sm: 3 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <ScheduleIcon sx={{ mr: 1 }} />
-              <Typography variant="h6">
+          <CardContent sx={{ p: { xs: 1, sm: 3 }, pt: { xs: 4, sm: 4 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2, pt: 1 }}>
+              <ScheduleIcon sx={{ mr: 1, mt: 0.5 }} />
+              <Typography variant="h6" sx={{ mt: 0.25 }}>
                 Today's Schedule
               </Typography>
               {pendingCount > 0 && (
-                <Badge badgeContent={pendingCount} color="primary" sx={{ ml: 2 }}>
+                <Badge 
+                  badgeContent={pendingCount} 
+                  color="primary" 
+                  sx={{ ml: 2, mt: 0.75 }}
+                >
                   <Chip label="Pending" size="small" color="warning" />
                 </Badge>
               )}
@@ -652,7 +656,12 @@ export const SupplementsNew: React.FC = () => {
         )}
 
         {/* Add/Edit Dialog */}
-        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
+        <Dialog 
+          open={dialogOpen} 
+          onClose={() => setDialogOpen(false)} 
+          maxWidth="sm" 
+          fullWidth
+        >
           <DialogTitle>
             {editingRegimen ? 'Edit Supplement' : 'Add New Supplement'}
           </DialogTitle>
@@ -660,10 +669,14 @@ export const SupplementsNew: React.FC = () => {
             <Box component="form" sx={{ pt: 1 }}>
               <Stack spacing={2}>
                 {/* Name and Brand */}
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Stack 
+                  direction={{ xs: 'column', sm: 'row' }} 
+                  spacing={2}
+                >
                   <TextField
                     fullWidth
                     label="Supplement Name"
+                    size="small"
                     {...register('name', { required: 'Supplement name is required' })}
                     error={!!errors.name}
                     helperText={
@@ -679,17 +692,22 @@ export const SupplementsNew: React.FC = () => {
                   <TextField
                     fullWidth
                     label="Brand (Optional)"
+                    size="small"
                     {...register('brand')}
                     InputLabelProps={{ shrink: true }}
                   />
-                </Box>
+                </Stack>
 
                 {/* Dosage and Unit */}
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Stack 
+                  direction={{ xs: 'column', sm: 'row' }} 
+                  spacing={2}
+                >
                   <TextField
                     fullWidth
                     label="Dosage"
                     type="number"
+                    size="small"
                     {...register('dosage', { 
                       required: 'Dosage is required',
                       min: { value: 0.1, message: 'Dosage must be positive' }
@@ -697,7 +715,7 @@ export const SupplementsNew: React.FC = () => {
                     error={!!errors.dosage}
                     helperText={errors.dosage?.message}
                   />
-                  <FormControl fullWidth>
+                  <FormControl fullWidth size="small">
                     <InputLabel>Unit</InputLabel>
                     <Controller
                       name="unit"
@@ -711,11 +729,14 @@ export const SupplementsNew: React.FC = () => {
                       )}
                     />
                   </FormControl>
-                </Box>
+                </Stack>
 
                 {/* Form and Frequency */}
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <FormControl fullWidth>
+                <Stack 
+                  direction={{ xs: 'column', sm: 'row' }} 
+                  spacing={2}
+                >
+                  <FormControl fullWidth size="small">
                     <InputLabel>Form</InputLabel>
                     <Controller
                       name="form"
@@ -732,7 +753,7 @@ export const SupplementsNew: React.FC = () => {
                     />
                   </FormControl>
                   
-                  <FormControl fullWidth>
+                  <FormControl fullWidth size="small">
                     <InputLabel>Frequency</InputLabel>
                     <Controller
                       name="frequency"
@@ -747,18 +768,20 @@ export const SupplementsNew: React.FC = () => {
                         </Select>
                       )}
                     />
-                    {watchedFrequency && (
-                      <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, ml: 1.5 }}>
-                        {watchedFrequency === 'twice_daily' && 'Times automatically set to morning & evening'}
-                        {watchedFrequency === 'three_times_daily' && 'Times automatically set to morning, afternoon & evening'}
-                        {watchedFrequency === 'daily' && 'Time automatically set to morning'}
-                      </Typography>
-                    )}
                   </FormControl>
-                </Box>
+                </Stack>
+                
+                {/* Frequency Helper Text */}
+                {watchedFrequency && (
+                  <Typography variant="caption" color="textSecondary" sx={{ mt: -1 }}>
+                    {watchedFrequency === 'twice_daily' && 'Times automatically set to morning & evening'}
+                    {watchedFrequency === 'three_times_daily' && 'Times automatically set to morning, afternoon & evening'}
+                    {watchedFrequency === 'daily' && 'Time automatically set to morning'}
+                  </Typography>
+                )}
 
                 {/* Time of Day */}
-                <FormControl fullWidth>
+                <FormControl fullWidth size="small">
                   <InputLabel>Time of Day</InputLabel>
                   <Controller
                     name="timeOfDay"
@@ -769,7 +792,12 @@ export const SupplementsNew: React.FC = () => {
                           <MenuItem key={option.value} value={option.value}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               {option.icon}
-                              {option.label}
+                              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                                {option.label}
+                              </Box>
+                              <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                                {option.label.split(' ')[0]}
+                              </Box>
                             </Box>
                           </MenuItem>
                         ))}
@@ -779,7 +807,10 @@ export const SupplementsNew: React.FC = () => {
                 </FormControl>
 
                 {/* Start and End Date */}
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Stack 
+                  direction={{ xs: 'column', sm: 'row' }} 
+                  spacing={2}
+                >
                   <Controller
                     name="startDate"
                     control={control}
@@ -788,7 +819,21 @@ export const SupplementsNew: React.FC = () => {
                         label="Start Date"
                         value={field.value}
                         onChange={(date) => field.onChange(date)}
-                        slotProps={{ textField: { fullWidth: true } }}
+                        slotProps={{ 
+                          textField: { 
+                            fullWidth: true,
+                            size: 'small'
+                          },
+                          popper: {
+                            placement: 'bottom-start',
+                            sx: {
+                              zIndex: 1301, // Higher than dialog
+                              '& .MuiPaper-root': {
+                                marginTop: 1
+                              }
+                            }
+                          }
+                        }}
                       />
                     )}
                   />
@@ -800,17 +845,32 @@ export const SupplementsNew: React.FC = () => {
                         label="End Date (Optional)"
                         value={field.value}
                         onChange={(date) => field.onChange(date)}
-                        slotProps={{ textField: { fullWidth: true } }}
+                        slotProps={{ 
+                          textField: { 
+                            fullWidth: true,
+                            size: 'small'
+                          },
+                          popper: {
+                            placement: 'bottom-start',
+                            sx: {
+                              zIndex: 1301, // Higher than dialog
+                              '& .MuiPaper-root': {
+                                marginTop: 1
+                              }
+                            }
+                          }
+                        }}
                       />
                     )}
                   />
-                </Box>
+                </Stack>
 
                 {/* Instructions */}
                 <TextField
                   fullWidth
                   label="Instructions (Optional)"
                   placeholder="e.g., Take with food, Empty stomach"
+                  size="small"
                   {...register('instructions')}
                   InputLabelProps={{ shrink: true }}
                 />
@@ -821,15 +881,21 @@ export const SupplementsNew: React.FC = () => {
                   label="Notes (Optional)"
                   multiline
                   rows={2}
+                  size="small"
                   {...register('notes')}
                   InputLabelProps={{ shrink: true }}
                 />
 
                 {/* Prescriber and Prescription checkbox */}
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <Stack 
+                  direction={{ xs: 'column', sm: 'row' }} 
+                  spacing={2}
+                  alignItems={{ sm: 'center' }}
+                >
                   <TextField
                     fullWidth
                     label="Prescribed By (Optional)"
+                    size="small"
                     {...register('prescribedBy')}
                     InputLabelProps={{ shrink: true }}
                   />
@@ -844,8 +910,9 @@ export const SupplementsNew: React.FC = () => {
                       />
                     }
                     label="Prescription"
+                    sx={{ minWidth: 'fit-content' }}
                   />
-                </Box>
+                </Stack>
               </Stack>
             </Box>
           </DialogContent>

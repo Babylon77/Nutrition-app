@@ -22,6 +22,7 @@ import supplementNewRoutes from './routes/supplementsNew';
 import bloodworkRoutes from './routes/bloodwork';
 import analysisRoutes from './routes/analysis';
 import healthRoutes from './routes/health';
+import aiAssistantRoutes from './routes/aiAssistant';
 
 // Load environment variables
 dotenv.config();
@@ -77,6 +78,7 @@ app.use('/api/supplements-new', supplementNewRoutes);
 app.use('/api/bloodwork', bloodworkRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/ai-assistant', aiAssistantRoutes);
 
 // Serve React app for all non-API routes in production
 if (process.env.NODE_ENV === 'production') {

@@ -1,0 +1,255 @@
+/* Macro Progress Bar Styles - Sprint 2.5 Modern UI/UX */
+
+.macro-progress-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  width: 100%;
+}
+
+/* Progress Bar Container */
+.macro-bar-container {
+  position: relative;
+  width: 100%;
+}
+
+.macro-bar-track {
+  display: flex;
+  width: 100%;
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  background: var(--color-border-light);
+  position: relative;
+}
+
+/* Size variants */
+.macro-progress-bar--sm .macro-bar-track {
+  height: 12px;
+}
+
+.macro-progress-bar--md .macro-bar-track {
+  height: 16px;
+}
+
+.macro-progress-bar--lg .macro-bar-track {
+  height: 20px;
+}
+
+/* Macro Segments */
+.macro-segment {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 1px; /* Ensure visibility even for small values */
+}
+
+.macro-fill {
+  height: 100%;
+  transition: width 1s cubic-bezier(0.4, 0.0, 0.2, 1);
+  border-radius: inherit;
+  position: relative;
+  z-index: 2;
+}
+
+.macro-fill--animated {
+  animation: macroFillAnimation 1.5s ease-out both;
+}
+
+.macro-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.3;
+  z-index: 1;
+}
+
+/* Segment Dividers */
+.macro-dividers {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.macro-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-bg-card);
+  z-index: 3;
+}
+
+/* Details Section */
+.macro-details {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+}
+
+.macro-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 0; /* Allow text truncation */
+}
+
+.macro-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.macro-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--border-radius-full);
+  flex-shrink: 0;
+}
+
+.macro-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.macro-values {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: var(--font-size-sm);
+  line-height: 1;
+}
+
+.macro-current {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.macro-goal {
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+}
+
+.macro-percentage {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+}
+
+/* Size-specific adjustments */
+.macro-progress-bar--sm .macro-label {
+  font-size: var(--font-size-xs);
+}
+
+.macro-progress-bar--sm .macro-values {
+  font-size: var(--font-size-xs);
+}
+
+.macro-progress-bar--lg .macro-label {
+  font-size: var(--font-size-base);
+}
+
+.macro-progress-bar--lg .macro-values {
+  font-size: var(--font-size-base);
+}
+
+.macro-progress-bar--lg .macro-indicator {
+  width: 10px;
+  height: 10px;
+}
+
+/* Animations */
+@keyframes macroFillAnimation {
+  from {
+    width: 0%;
+  }
+  to {
+    width: var(--final-width, 100%);
+  }
+}
+
+/* Hover effects */
+.macro-progress-bar:hover .macro-fill {
+  filter: brightness(1.1);
+}
+
+.macro-item:hover .macro-indicator {
+  transform: scale(1.2);
+  transition: transform var(--transition-fast);
+}
+
+.macro-item:hover .macro-label {
+  color: var(--color-text-primary);
+  transition: color var(--transition-fast);
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .macro-details {
+    gap: var(--spacing-xs);
+  }
+  
+  .macro-label {
+    font-size: var(--font-size-xs);
+  }
+  
+  .macro-values {
+    font-size: var(--font-size-xs);
+  }
+  
+  .macro-percentage {
+    font-size: 10px;
+  }
+  
+  /* Stack vertically on very small screens if needed */
+  .macro-item {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .macro-fill--animated {
+    animation: none;
+  }
+  
+  .macro-fill {
+    transition: none;
+  }
+  
+  .macro-indicator,
+  .macro-label {
+    transition: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .macro-bar-track {
+    border: 1px solid var(--color-text-primary);
+  }
+  
+  .macro-divider {
+    background: var(--color-text-primary);
+    width: 2px;
+  }
+  
+  .macro-fill {
+    border: 1px solid var(--color-text-primary);
+  }
+}
+
+/* Focus states for keyboard navigation */
+.macro-progress-bar:focus-within .macro-fill {
+  outline: 2px solid var(--color-primary-green);
+  outline-offset: 2px;
+} 
