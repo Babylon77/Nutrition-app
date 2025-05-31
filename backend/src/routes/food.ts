@@ -870,8 +870,16 @@ router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
         mealType: data.mealType,
         isPersonalFood: data.isPersonalFood || false,
         personalFoodId: data.personalFoodId || null,
+        personalFoodData: data.personalFoodData || null, // Store complete personal food data
         status: data.isPersonalFood ? 'ready' : 'needs_analysis'
       };
+
+      console.log('🏗️ BACKEND ADD TO QUEUE - Adding item:', {
+        name: queueItem.name,
+        isPersonalFood: queueItem.isPersonalFood,
+        hasPersonalFoodData: !!queueItem.personalFoodData,
+        personalFoodId: queueItem.personalFoodId
+      });
 
       req.session.foodQueue.push(queueItem);
 
@@ -919,17 +927,26 @@ router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
       const readyItems = queue.filter(item => item.status === 'ready');
       const needsAnalysis = queue.filter(item => item.status === 'needs_analysis');
 
+      console.log('🎯 BACKEND PROCESS QUEUE - Starting processing...');
+      console.log('📋 BACKEND PROCESS QUEUE - Total queue items:', queue.length);
+      console.log('🥗 BACKEND PROCESS QUEUE - Ready items (personal foods):', readyItems.length);
+      console.log('🤖 BACKEND PROCESS QUEUE - Need analysis items (AI foods):', needsAnalysis.length);
+      console.log('📝 BACKEND PROCESS QUEUE - Full queue:', JSON.stringify(queue, null, 2));
+
       let analysisResults = [];
 
       // Bulk analyze unknown foods if any
       if (needsAnalysis.length > 0) {
+        console.log('🤖 BACKEND PROCESS QUEUE - Processing AI foods...');
         const foodQueries = needsAnalysis.map(item => 
           `${item.quantity} ${item.unit} ${item.name}`
         );
 
         try {
           analysisResults = await aiService.bulkLookupFoods(foodQueries);
+          console.log('✅ BACKEND PROCESS QUEUE - AI analysis complete:', analysisResults.length);
         } catch (error) {
+          console.log('⚠️ BACKEND PROCESS QUEUE - AI bulk failed, trying individual...');
           // Fallback to individual analysis
           const individualResults = [];
           for (const item of needsAnalysis) {
@@ -947,6 +964,7 @@ router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
             }
           }
           analysisResults = individualResults;
+          console.log('✅ BACKEND PROCESS QUEUE - Individual AI analysis complete:', analysisResults.length);
         }
       }
 
@@ -954,38 +972,103 @@ router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
       const finalFoodItems = [];
 
       // Add ready items (from personal foods)
-      for (const item of readyItems) {
-        if (item.isPersonalFood && item.personalFoodId) {
-          const personalFood = await PersonalFood.findById(item.personalFoodId);
-          if (personalFood) {
-            finalFoodItems.push({
-              name: personalFood.name,
-              quantity: item.quantity,
-              unit: item.unit,
-              mealType: item.mealType,
-              nutrition: personalFood.nutrition,
-              confidence: 1.0,
-              source: 'personal'
-            });
+      console.log('🥗 BACKEND PROCESS QUEUE - Processing personal foods...');
+      for (let i = 0; i < readyItems.length; i++) {
+        const item = readyItems[i];
+        console.log(`🔍 BACKEND PROCESS QUEUE - Processing item ${i + 1}/${readyItems.length}:`, {
+          name: item.name,
+          isPersonalFood: item.isPersonalFood,
+          personalFoodId: item.personalFoodId,
+          quantity: item.quantity,
+          unit: item.unit,
+          mealType: item.mealType
+        });
 
-            // Update usage stats
-            await PersonalFood.findByIdAndUpdate(
-              item.personalFoodId,
-              {
-                $inc: { timesUsed: 1 },
-                $set: { lastUsed: new Date() }
-              }
-            );
+        if (item.isPersonalFood && item.personalFoodData) {
+          console.log(`✅ BACKEND PROCESS QUEUE - Using stored personal food data: ${item.personalFoodData.name}`);
+          
+          const foodItem = {
+            name: item.personalFoodData.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            mealType: item.mealType,
+            nutrition: item.personalFoodData.nutrition,
+            confidence: 1.0,
+            source: 'personal'
+          };
+          console.log(`📝 BACKEND PROCESS QUEUE - Created food item from stored data:`, foodItem);
+          finalFoodItems.push(foodItem);
+
+          // Update usage stats if we have the ID
+          if (item.personalFoodId) {
+            console.log(`📊 BACKEND PROCESS QUEUE - Updating usage stats for: ${item.personalFoodId}`);
+            try {
+              await PersonalFood.findByIdAndUpdate(
+                item.personalFoodId,
+                {
+                  $inc: { timesUsed: 1 },
+                  $set: { lastUsed: new Date() }
+                }
+              );
+              console.log(`✅ BACKEND PROCESS QUEUE - Usage stats updated`);
+            } catch (error) {
+              console.log(`⚠️ BACKEND PROCESS QUEUE - Failed to update usage stats:`, error);
+            }
           }
+        } else if (item.isPersonalFood && item.personalFoodId) {
+          console.log(`🔎 BACKEND PROCESS QUEUE - Fallback: Looking up personal food ID: ${item.personalFoodId}`);
+          
+          try {
+            const personalFood = await PersonalFood.findById(item.personalFoodId);
+            console.log(`📋 BACKEND PROCESS QUEUE - Personal food lookup result:`, personalFood ? {
+              found: true,
+              id: personalFood._id,
+              name: personalFood.name,
+              userId: personalFood.userId
+            } : { found: false });
+
+            if (personalFood) {
+              console.log(`✅ BACKEND PROCESS QUEUE - Adding personal food: ${personalFood.name}`);
+              const foodItem = {
+                name: personalFood.name,
+                quantity: item.quantity,
+                unit: item.unit,
+                mealType: item.mealType,
+                nutrition: personalFood.nutrition,
+                confidence: 1.0,
+                source: 'personal'
+              };
+              console.log(`📝 BACKEND PROCESS QUEUE - Created food item:`, foodItem);
+              finalFoodItems.push(foodItem);
+
+              // Update usage stats
+              console.log(`📊 BACKEND PROCESS QUEUE - Updating usage stats for: ${personalFood._id}`);
+              await PersonalFood.findByIdAndUpdate(
+                item.personalFoodId,
+                {
+                  $inc: { timesUsed: 1 },
+                  $set: { lastUsed: new Date() }
+                }
+              );
+              console.log(`✅ BACKEND PROCESS QUEUE - Usage stats updated`);
+            } else {
+              console.error(`❌ BACKEND PROCESS QUEUE - Personal food not found for ID: ${item.personalFoodId}`);
+            }
+          } catch (error) {
+            console.error(`❌ BACKEND PROCESS QUEUE - Error looking up personal food:`, error);
+          }
+        } else {
+          console.log(`⚠️ BACKEND PROCESS QUEUE - Item not marked as personal food or missing ID`);
         }
       }
 
       // Add analyzed items
+      console.log('🤖 BACKEND PROCESS QUEUE - Adding AI analyzed items...');
       for (let i = 0; i < analysisResults.length; i++) {
         const result = analysisResults[i];
         const originalItem = needsAnalysis[i];
 
-        finalFoodItems.push({
+        const foodItem = {
           name: result.name || originalItem.name,
           quantity: originalItem.quantity,
           unit: originalItem.unit,
@@ -993,8 +1076,17 @@ router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
           nutrition: result.nutrition || {},
           confidence: result.confidence || 0.8,
           source: 'ai'
-        });
+        };
+        console.log(`🤖 BACKEND PROCESS QUEUE - Added AI food item:`, foodItem);
+        finalFoodItems.push(foodItem);
       }
+
+      console.log(`🎉 BACKEND PROCESS QUEUE - Final result: ${finalFoodItems.length} total items`);
+      console.log('📋 BACKEND PROCESS QUEUE - Final items summary:', finalFoodItems.map(item => ({
+        name: item.name,
+        source: item.source,
+        calories: item.nutrition?.calories || 0
+      })));
 
       // Clear the queue
       req.session.foodQueue = [];

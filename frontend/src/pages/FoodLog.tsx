@@ -330,6 +330,9 @@ export const FoodLog: React.FC = () => {
       const day = String(date.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
+      console.log('🗂️ SAVE FOOD LOGS - Date:', dateStr);
+      console.log('🍽️ SAVE FOOD LOGS - Items to save:', items);
+      
       // Group items by meal type
       const meals = {
         breakfast: [] as any[],
@@ -339,7 +342,7 @@ export const FoodLog: React.FC = () => {
       };
 
       items.forEach(item => {
-        meals[item.mealType].push({
+        const mealData = {
           food: {
             name: item.name,
             nutritionPer100g: item.nutrition // This format matches backend expectations
@@ -349,8 +352,13 @@ export const FoodLog: React.FC = () => {
           nutrition: item.nutrition,
           confidence: item.confidence,
           weightConversion: item.weightConversion
-        });
+        };
+        
+        console.log(`📝 Adding ${item.name} to ${item.mealType}:`, mealData);
+        meals[item.mealType].push(mealData);
       });
+
+      console.log('🍽️ SAVE FOOD LOGS - Grouped meals:', meals);
 
       const response = await fetch(`/api/food/logs/${dateStr}`, {
         method: 'POST',
@@ -362,10 +370,15 @@ export const FoodLog: React.FC = () => {
       });
 
       if (!response.ok) {
+        const errorData = await response.text();
+        console.error('❌ SAVE FOOD LOGS - Error response:', errorData);
         throw new Error('Failed to save food logs');
       }
+      
+      const responseData = await response.json();
+      console.log('✅ SAVE FOOD LOGS - Success response:', responseData);
     } catch (err: any) {
-      console.error('Failed to save food logs:', err);
+      console.error('❌ SAVE FOOD LOGS - Failed to save food logs:', err);
       setError(err.message || 'Failed to save food logs');
     }
   };
@@ -411,6 +424,8 @@ export const FoodLog: React.FC = () => {
       setAddingFood(true);
       setError('');
 
+      console.log('🥗 PERSONAL FOOD - Adding personal food:', personalFood);
+
       // Get form data for meal type
       const formData = getValues();
 
@@ -424,14 +439,19 @@ export const FoodLog: React.FC = () => {
         weightConversion: undefined,
       };
 
+      console.log('🔢 PERSONAL FOOD - Created food item:', newFoodItem);
+
       // Update local state
       const updatedItems = [...foodItems, newFoodItem];
+      console.log('📋 PERSONAL FOOD - Updated items list:', updatedItems);
       setFoodItems(updatedItems);
       
       // Save to backend
+      console.log('💾 PERSONAL FOOD - Calling saveFoodLogs...');
       await saveFoodLogs(selectedDate, updatedItems);
       
       // Increment usage count in personal database
+      console.log('📊 PERSONAL FOOD - Incrementing usage count...');
       await fetch(`/api/personal-foods/${personalFood.id}/use`, {
         method: 'POST',
         headers: {
@@ -447,7 +467,9 @@ export const FoodLog: React.FC = () => {
       setAddFoodOpen(false);
       reset();
       setPersonalFoodSuggestions([]);
+      console.log('✅ PERSONAL FOOD - Successfully added personal food');
     } catch (err: any) {
+      console.error('❌ PERSONAL FOOD - Error:', err);
       setError(err.message || 'Failed to add food item');
     } finally {
       setAddingFood(false);
@@ -646,6 +668,8 @@ export const FoodLog: React.FC = () => {
       setAddingFood(true);
       setError('');
 
+      console.log('🤖 AI LOOKUP - Starting AI food lookup for:', data.foodName);
+
       // Use the AI food lookup API
       const response = await fetch('/api/food/lookup', {
         method: 'POST',
@@ -666,7 +690,7 @@ export const FoodLog: React.FC = () => {
 
       const result = await response.json();
       
-      console.log('🍕 AI Food Lookup Result:', result.data);
+      console.log('🤖 AI LOOKUP - AI Food Lookup Result:', result.data);
       
       const newFoodItem: EnhancedFoodItem = {
         name: result.data.name,
@@ -714,16 +738,22 @@ export const FoodLog: React.FC = () => {
         weightConversion: result.data.weightConversion || undefined,
       };
 
+      console.log('🔢 AI LOOKUP - Created food item:', newFoodItem);
+
       // Update local state
       const updatedItems = [...foodItems, newFoodItem];
+      console.log('📋 AI LOOKUP - Updated items list:', updatedItems);
       setFoodItems(updatedItems);
       
       // Save to backend
+      console.log('💾 AI LOOKUP - Calling saveFoodLogs...');
       await saveFoodLogs(selectedDate, updatedItems);
       
       setAddFoodOpen(false);
       reset();
+      console.log('✅ AI LOOKUP - Successfully added AI analyzed food');
     } catch (err: any) {
+      console.error('❌ AI LOOKUP - Error:', err);
       setError(err.message || 'Failed to add food item');
     } finally {
       setAddingFood(false);

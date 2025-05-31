@@ -3,16 +3,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   HomeIcon, 
   DocumentTextIcon, 
+  BookOpenIcon,
   BeakerIcon, 
-  ChartBarIcon, 
+  HeartIcon,
   UserCircleIcon,
   PlusIcon 
 } from '@heroicons/react/24/outline';
 import { 
   HomeIcon as HomeSolid, 
   DocumentTextIcon as DocumentSolid, 
+  BookOpenIcon as BookOpenSolid,
   BeakerIcon as BeakerSolid, 
-  ChartBarIcon as ChartSolid, 
+  HeartIcon as HeartSolid,
   UserCircleIcon as UserSolid 
 } from '@heroicons/react/24/solid';
 import './BottomNavigation.css';
@@ -44,6 +46,14 @@ const navigationItems: NavigationItem[] = [
     color: 'var(--color-food)'
   },
   {
+    id: 'personal',
+    label: 'My Foods',
+    path: '/personal-foods',
+    icon: BookOpenIcon,
+    solidIcon: BookOpenSolid,
+    color: 'var(--color-personal)'
+  },
+  {
     id: 'supplements',
     label: 'Supplements',
     path: '/supplements',
@@ -52,12 +62,12 @@ const navigationItems: NavigationItem[] = [
     color: 'var(--color-supplements)'
   },
   {
-    id: 'analysis',
-    label: 'Analysis',
-    path: '/analysis',
-    icon: ChartBarIcon,
-    solidIcon: ChartSolid,
-    color: 'var(--color-analysis)'
+    id: 'health',
+    label: 'Health',
+    path: '/bloodwork',
+    icon: HeartIcon,
+    solidIcon: HeartSolid,
+    color: 'var(--color-health)'
   },
   {
     id: 'profile',

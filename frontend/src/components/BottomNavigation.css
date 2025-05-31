@@ -198,6 +198,6 @@
 }
 
 .quick-add-fab:focus-visible {
-  outline: 2px solid var(--color-primary-green);
+  outline: 2px solid var(--color-accent-yellow);
   outline-offset: 2px;
 } 

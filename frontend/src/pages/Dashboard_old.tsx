@@ -44,49 +44,9 @@ export const Dashboard: React.FC = () => {
         setLoading(true);
         setError('');
 
-        // Get today's food log directly (more reliable than summary endpoint)
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-        console.log('📅 Dashboard - Fetching food log for date:', today);
-        
-        try {
-          const todaysFoodLog = await apiService.getFoodLogByDate(today);
-          console.log('🍎 Dashboard - Today\'s food log:', todaysFoodLog);
-          
-          if (todaysFoodLog && todaysFoodLog.totalNutrition) {
-            // Convert food log data to nutrition summary format
-            const nutritionData = {
-              daysLogged: 1,
-              totalCalories: todaysFoodLog.totalNutrition.calories || 0,
-              totalProtein: todaysFoodLog.totalNutrition.protein || 0,
-              totalCarbs: todaysFoodLog.totalNutrition.carbs || 0,
-              totalFat: todaysFoodLog.totalNutrition.fat || 0,
-              totalFiber: todaysFoodLog.totalNutrition.fiber || 0,
-              averageCalories: todaysFoodLog.totalNutrition.calories || 0,
-              goalCalories: 2000
-            };
-            console.log('✅ Dashboard - Nutrition data:', nutritionData);
-            setNutritionSummary(nutritionData);
-          } else {
-            console.log('📝 Dashboard - No food logged for today');
-            // Set empty nutrition summary
-            setNutritionSummary({
-              daysLogged: 0,
-              totalCalories: 0,
-              totalProtein: 0,
-              totalCarbs: 0,
-              totalFat: 0,
-              totalFiber: 0,
-              averageCalories: 0,
-              goalCalories: 2000
-            });
-          }
-        } catch (err) {
-          console.log('⚠️ Dashboard - Error fetching today\'s food log:', err);
-          // Fallback to nutrition summary endpoint
-          const nutrition = await apiService.getNutritionSummary(1);
-          console.log('🔄 Dashboard - Fallback nutrition summary:', nutrition);
-          setNutritionSummary(nutrition);
-        }
+        // Fetch nutrition summary for today only
+        const nutrition = await apiService.getNutritionSummary(1);
+        setNutritionSummary(nutrition);
 
         // Fetch recent bloodwork
         try {
@@ -440,9 +400,47 @@ export const Dashboard: React.FC = () => {
           </CardContent>
           <CardActions>
             <Button size="small" href="/analysis">
-              {recentAnalyses.length > 0 ? 'View All Insights' : 'Generate Insights'}
+              View All Analyses
             </Button>
+            {nutritionSummary && nutritionSummary.daysLogged > 0 && (
+              <Button size="small" variant="contained">
+                Generate New Analysis
+              </Button>
+            )}
           </CardActions>
+        </Card>
+
+        {/* Quick Actions */}
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Quick Actions
+            </Typography>
+            <Box display="flex" gap={2} flexWrap="wrap">
+              <Button
+                variant="contained"
+                startIcon={<RestaurantIcon />}
+                href="/food-log"
+              >
+                Log Today's Meals
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<BiotechIcon />}
+                href="/bloodwork"
+              >
+                Upload Lab Results
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<AnalyticsIcon />}
+                href="/analysis"
+                disabled={!nutritionSummary || nutritionSummary.daysLogged === 0}
+              >
+                Generate Analysis
+              </Button>
+            </Box>
+          </CardContent>
         </Card>
       </Box>
     </Box>

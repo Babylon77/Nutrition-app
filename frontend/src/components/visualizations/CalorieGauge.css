@@ -4,7 +4,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md);
 }
 
 .gauge-container {
@@ -12,75 +13,61 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
 }
 
 .gauge-svg {
   display: block;
+  transition: transform var(--transition-medium);
 }
 
 .gauge-progress--animated {
-  animation: gaugeProgress 2s ease-out var(--animation-delay, 0s) both;
+  animation: gaugeProgress 2.5s cubic-bezier(0.4, 0.0, 0.2, 1) 0.3s both;
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+}
+
+@keyframes gaugeProgress {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 .gauge-center-text {
   font-family: var(--font-family-primary);
   fill: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  transition: all var(--transition-fast);
 }
 
 .gauge-current {
   font-weight: var(--font-weight-bold);
-  font-size: 1.2em;
+  font-size: 1.1em;
+  fill: var(--color-text-primary);
 }
 
 .gauge-unit {
-  font-weight: var(--font-weight-normal);
-  font-size: 0.7em;
+  font-weight: var(--font-weight-medium);
+  font-size: 0.65em;
   fill: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-/* Gauge Pointer */
-.gauge-pointer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  transition: transform 1.5s cubic-bezier(0.4, 0.0, 0.2, 1);
-}
-
-.pointer-line {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 60%;
-  height: 2px;
-  background: var(--color-text-primary);
-  transform: translate(-50%, -50%);
-  transform-origin: left center;
-  border-radius: 1px;
-  opacity: 0.8;
-}
-
-.pointer-circle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 8px;
-  height: 8px;
-  background: var(--color-text-primary);
-  border: 2px solid var(--color-bg-card);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  box-shadow: var(--shadow-sm);
+.gauge-goal-text {
+  font-family: var(--font-family-primary);
+  fill: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  text-anchor: middle;
 }
 
 /* Labels */
 .gauge-labels {
   display: flex;
-  gap: var(--spacing-xl);
+  gap: var(--spacing-2xl);
   align-items: center;
   text-align: center;
+  margin-top: var(--spacing-sm);
 }
 
 .gauge-stat {
@@ -88,6 +75,17 @@
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-card);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+  min-width: 80px;
+}
+
+.gauge-stat:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .stat-value {
@@ -95,23 +93,37 @@
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   line-height: 1;
+  transition: color var(--transition-fast);
 }
 
 .stat-label {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
   font-weight: var(--font-weight-medium);
 }
 
 /* Size variants */
+.calorie-gauge--sm {
+  gap: var(--spacing-md);
+}
+
 .calorie-gauge--sm .gauge-labels {
   gap: var(--spacing-lg);
 }
 
 .calorie-gauge--sm .stat-value {
   font-size: var(--font-size-base);
+}
+
+.calorie-gauge--sm .gauge-stat {
+  min-width: 60px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.calorie-gauge--lg {
+  gap: var(--spacing-xl);
 }
 
 .calorie-gauge--lg .gauge-labels {
@@ -122,31 +134,48 @@
   font-size: var(--font-size-xl);
 }
 
-/* Animations */
-@keyframes gaugeProgress {
-  from {
-    stroke-dashoffset: var(--circumference, 251.2);
-  }
-  to {
-    stroke-dashoffset: var(--final-offset);
-  }
+.calorie-gauge--lg .gauge-stat {
+  min-width: 100px;
+  padding: var(--spacing-md) var(--spacing-lg);
 }
 
 /* Hover effects */
-.calorie-gauge:hover .pointer-line,
-.calorie-gauge:hover .pointer-circle {
-  opacity: 1;
+.calorie-gauge:hover .gauge-svg {
+  transform: scale(1.02);
 }
 
 .calorie-gauge:hover .gauge-current {
-  font-size: 1.25em;
-  transition: font-size var(--transition-fast);
+  font-size: 1.15em;
+}
+
+.calorie-gauge:hover .gauge-center-text {
+  fill: var(--color-primary-green);
+}
+
+/* Progress color animations */
+.gauge-progress--animated {
+  animation: gaugeProgress 2.5s cubic-bezier(0.4, 0.0, 0.2, 1) 0.3s both,
+             progressGlow 3s ease-in-out infinite;
+}
+
+@keyframes progressGlow {
+  0%, 100% {
+    filter: url(#glow) drop-shadow(0 0 5px currentColor);
+  }
+  50% {
+    filter: url(#glow) drop-shadow(0 0 15px currentColor);
+  }
 }
 
 /* Responsive adjustments */
 @media (max-width: 480px) {
   .gauge-labels {
-    gap: var(--spacing-md);
+    gap: var(--spacing-lg);
+    flex-wrap: wrap;
+  }
+  
+  .gauge-stat {
+    min-width: 70px;
   }
   
   .stat-value {
@@ -156,6 +185,25 @@
   .calorie-gauge--lg .stat-value {
     font-size: var(--font-size-lg);
   }
+
+  .calorie-gauge {
+    gap: var(--spacing-md);
+  }
+}
+
+@media (max-width: 360px) {
+  .gauge-labels {
+    gap: var(--spacing-sm);
+  }
+  
+  .gauge-stat {
+    min-width: 60px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+  
+  .stat-value {
+    font-size: var(--font-size-sm);
+  }
 }
 
 /* Accessibility */
@@ -164,23 +212,54 @@
     animation: none;
   }
   
-  .gauge-pointer {
+  .gauge-svg {
     transition: none;
   }
   
   .gauge-current {
     transition: none;
   }
+  
+  .gauge-stat {
+    transition: none;
+  }
+  
+  .gauge-stat:hover {
+    transform: none;
+  }
+  
+  .calorie-gauge:hover .gauge-svg {
+    transform: none;
+  }
 }
 
 /* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
-  .pointer-line,
-  .pointer-circle {
-    background: var(--color-text-white);
+  .gauge-stat {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-medium);
   }
   
-  .pointer-circle {
-    border-color: var(--color-bg-card);
+  .gauge-goal-text {
+    fill: var(--color-text-light);
+  }
+}
+
+/* Loading state */
+.calorie-gauge--loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.calorie-gauge--loading .gauge-svg {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
   }
 } 

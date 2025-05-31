@@ -160,23 +160,33 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
     if (!foodName.trim()) return;
 
     try {
+      const requestData = {
+        action: 'add_to_queue',
+        data: {
+          name: foodName,
+          quantity,
+          unit,
+          mealType,
+          isPersonalFood,
+          personalFoodId,
+          // Pass complete personal food data to avoid backend lookup
+          personalFoodData: isPersonalFood && personalFoodData ? {
+            _id: personalFoodData._id,
+            name: personalFoodData.name,
+            nutrition: personalFoodData.nutrition,
+            defaultQuantity: personalFoodData.defaultQuantity,
+            defaultUnit: personalFoodData.defaultUnit
+          } : null
+        }
+      };
+
       const response = await fetch('/api/food/smart-entry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({
-          action: 'add_to_queue',
-          data: {
-            name: foodName,
-            quantity,
-            unit,
-            mealType,
-            isPersonalFood,
-            personalFoodId
-          }
-        }),
+        body: JSON.stringify(requestData),
       });
 
       const result = await response.json();
@@ -240,6 +250,15 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
       setIsProcessing(true);
       setError('');
 
+      console.log('🎯 PROCESS QUEUE - Starting queue processing...');
+      console.log('📋 PROCESS QUEUE - Current queue:', queue);
+      
+      // Log personal foods vs AI foods
+      const personalFoods = queue.filter(item => item.isPersonalFood);
+      const aiFoods = queue.filter(item => !item.isPersonalFood);
+      console.log(`🥗 PROCESS QUEUE - Personal foods: ${personalFoods.length}`, personalFoods);
+      console.log(`🤖 PROCESS QUEUE - AI foods: ${aiFoods.length}`, aiFoods);
+
       const response = await fetch('/api/food/smart-entry', {
         method: 'POST',
         headers: {
@@ -249,15 +268,33 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
         body: JSON.stringify({ action: 'process_queue', data: {} }),
       });
 
+      console.log(`📡 PROCESS QUEUE - Response status: ${response.status}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ PROCESS QUEUE - Response not OK:', errorText);
+        throw new Error(`Process queue failed: ${response.status} ${response.statusText}`);
+      }
+
       const result = await response.json();
+      console.log('📥 PROCESS QUEUE - Response result:', result);
+      
       if (result.success) {
         const processedFoods = result.data.processedItems || [];
+        console.log('✅ PROCESS QUEUE - Processed foods:', processedFoods);
+        console.log(`📊 PROCESS QUEUE - Total processed: ${processedFoods.length} items`);
+        
         onFoodsAdded(processedFoods);
         setQueue([]);
         onClose();
+        console.log('🎉 PROCESS QUEUE - Successfully completed processing!');
+      } else {
+        console.error('❌ PROCESS QUEUE - Result not successful:', result);
+        throw new Error(result.message || 'Process queue was not successful');
       }
-    } catch (err) {
-      setError('Failed to process queue');
+    } catch (err: any) {
+      console.error('❌ PROCESS QUEUE - Error during processing:', err);
+      setError(err.message || 'Failed to process queue');
     } finally {
       setIsProcessing(false);
     }
