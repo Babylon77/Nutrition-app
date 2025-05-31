@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import session from 'express-session';
 import dotenv from 'dotenv';
 import path from 'path';
+import MongoStore from 'connect-mongo';
 
 import { connectDatabase } from './config/database';
 import { logger } from './utils/logger';
@@ -51,6 +52,11 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/nutrition-app',
+    collectionName: 'sessions', // Optional: name of the sessions collection
+    ttl: 24 * 60 * 60 // = 1 day. Default is 14 days.
+  }),
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
