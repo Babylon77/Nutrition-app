@@ -883,10 +883,16 @@ router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
 
       req.session.foodQueue.push(queueItem);
 
-      return res.json({
-        success: true,
-        action: 'add_to_queue',
-        data: { queue: req.session.foodQueue }
+      req.session.save((err) => {
+        if (err) {
+          console.error('Failed to save session after adding to queue:', err);
+          return res.status(500).json({ success: false, message: 'Failed to update food queue' });
+        }
+        return res.json({
+          success: true,
+          action: 'add_to_queue',
+          data: { queue: req.session.foodQueue }
+        });
       });
 
     case 'get_queue':
