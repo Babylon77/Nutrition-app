@@ -122,7 +122,7 @@ const LandingPage: React.FC = () => {
                 lineHeight: 1.6
               }}
             >
-              FuelIQ is an AI-powered nutrition and biomarker tracking app that helps users understand how food and lab results impact energy, metabolism, and health. It uses LLMs to analyze bloodwork PDFs, track daily intake, and provide smart, personalized insights.
+              Fuel IQ is an AI-powered nutrition and biomarker tracking app that helps users understand how food and lab results impact energy, metabolism, and health. It uses LLMs to analyze bloodwork PDFs, track daily intake, and provide smart, personalized insights.
             </Typography>
             
             {/* CTA Buttons */}

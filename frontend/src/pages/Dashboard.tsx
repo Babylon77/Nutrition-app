@@ -6,7 +6,6 @@ import {
   CardContent,
   CardActions,
   Button,
-  LinearProgress,
   Chip,
   Alert,
   CircularProgress,
@@ -230,26 +229,45 @@ export const Dashboard: React.FC = () => {
               
               {nutritionSummary ? (
                 <Box>
-                  {/* Calorie Gauge */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
-                    <CalorieGauge
-                      current={nutritionSummary.totalCalories}
-                      goal={getSuggestedCalories() || nutritionSummary.goalCalories || 2000}
-                      size="md"
-                    />
+                  {/* Calorie Gauge and Goal */}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ width: '100%', maxWidth: { xs: '240px', sm: '300px', md: '380px' }, mb: 0.5, mx: 'auto' }}> {/* Increased maxWidth for larger gauge */}
+                        <CalorieGauge
+                          current={nutritionSummary.totalCalories}
+                          goal={getSuggestedCalories() || nutritionSummary.goalCalories || 2000}
+                          size="lg"
+                          showLabels={false} // Hide internal labels
+                        />
+                    </Box>
+                    <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}> {/* Added margin bottom */}
+                        Goal: {Math.round(getSuggestedCalories() || nutritionSummary.goalCalories || 2000)} cal
+                    </Typography>
+                  </Box>
+
+                  {/* Progress and Remaining Stats - Replaced cards with a single Box */}
+                  <Box 
+                    sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-around', // Distribute space
+                      gap: 2, 
+                      mb: 3, 
+                      textAlign: 'center'
+                    }}
+                  >
                     <Box>
+                      <Typography variant="h5" component="div" sx={{ fontWeight: 'bold' }}>
+                        {((nutritionSummary.totalCalories / (getSuggestedCalories() || nutritionSummary.goalCalories || 1)) * 100).toFixed(0)}%
+                      </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Today's Calories
+                        Progress
                       </Typography>
-                      <Typography variant="h4">
-                        {Math.round(nutritionSummary.totalCalories)}
+                    </Box>
+                    <Box>
+                      <Typography variant="h5" component="div" sx={{ fontWeight: 'bold' }}>
+                        {Math.max(0, Math.round((getSuggestedCalories() || nutritionSummary.goalCalories || 0) - nutritionSummary.totalCalories))}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {getSuggestedCalories() ? (
-                          <>Goal: {getSuggestedCalories()} calories (weight goal)</>
-                        ) : (
-                          <>Goal: {nutritionSummary.goalCalories} calories</>
-                        )}
+                      <Typography variant="body2" color="text.secondary">
+                        Remaining Cal
                       </Typography>
                     </Box>
                   </Box>
@@ -313,14 +331,6 @@ export const Dashboard: React.FC = () => {
                 </Box>
               )}
             </CardContent>
-            <CardActions>
-              <Button size="small" href="/food-log">
-                Log Food
-              </Button>
-              <Button size="small" href="/analysis">
-                View Analysis
-              </Button>
-            </CardActions>
           </Card>
 
           {/* Bloodwork Status Card */}

@@ -26,6 +26,8 @@ import {
   InputAdornment,
   Fab,
   Tooltip,
+  Paper,
+  DialogContentText,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -39,6 +41,8 @@ import {
   Category as CategoryIcon,
   AccessTime as AccessTimeIcon,
   FilterList as FilterListIcon,
+  SortByAlpha as SortByAlphaIcon,
+  CloudUpload as ImportIcon,
 } from '@mui/icons-material';
 
 interface PersonalFood {
@@ -88,14 +92,13 @@ const PersonalFoods: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [currentTab, setCurrentTab] = useState(0);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<PersonalFood | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [sortBy, setSortBy] = useState<'recent' | 'alphabetical' | 'timesUsed'>('recent');
+  const [importDays, setImportDays] = useState(30);
 
   // Form state for create/edit
   const [formData, setFormData] = useState({
@@ -133,7 +136,7 @@ const PersonalFoods: React.FC = () => {
 
   useEffect(() => {
     loadPersonalFoods();
-  }, [searchQuery, selectedCategory, currentTab, sortBy]);
+  }, [searchQuery, currentTab]);
 
   const loadPersonalFoods = async () => {
     try {
@@ -142,11 +145,20 @@ const PersonalFoods: React.FC = () => {
 
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
-      if (selectedCategory !== 'all') params.append('category', selectedCategory);
-      if (currentTab === 1) params.append('favorites', 'true');
-      if (sortBy === 'recent') params.append('sort', 'lastUsed_desc');
-      if (sortBy === 'alphabetical') params.append('sort', 'name_asc');
-      if (sortBy === 'timesUsed') params.append('sort', 'timesUsed_desc');
+
+      // Determine sort/filter based on currentTab
+      switch (currentTab) {
+        case 0: // Popular
+          params.append('sort', 'timesUsed_desc');
+          break;
+        case 1: // Recent
+          params.append('sort', 'lastUsed_desc');
+          break;
+        case 2: // Favorites
+          params.append('favorites', 'true');
+          // Backend should handle default sort for favorites (e.g., by name or lastUsed)
+          break;
+      }
 
       const response = await fetch(`/api/personal-foods?${params.toString()}`, {
         headers: {
@@ -155,14 +167,15 @@ const PersonalFoods: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load personal foods');
+        const errData = await response.json();
+        throw new Error(errData.message || 'Failed to load personal foods');
       }
 
       const result = await response.json();
       setPersonalFoods(result.data.foods || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading personal foods:', error);
-      setError('Failed to load personal foods');
+      setError(error.message || 'Failed to load personal foods');
     } finally {
       setLoading(false);
     }
@@ -278,51 +291,24 @@ const PersonalFoods: React.FC = () => {
     try {
       setImporting(true);
       setError('');
-
-      // First, clear existing imported foods for accurate re-import
-      const clearResponse = await fetch('/api/personal-foods/clear-imported', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!clearResponse.ok) {
-        throw new Error('Failed to clear existing imported foods');
-      }
-
-      const clearResult = await clearResponse.json();
-      console.log(`Cleared ${clearResult.data.deletedCount} existing imported foods`);
-
-      // Now import with correct usage counts
-      const response = await fetch('/api/personal-foods/import-from-logs', {
+      const response = await fetch(`/api/personal-foods/import-from-logs?days=${days}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({ days }),
       });
-
       if (!response.ok) {
-        throw new Error('Failed to import foods from logs');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to import foods from logs');
       }
-
       const result = await response.json();
-      console.log('Import result:', result);
-      
-      // Show success message
-      setError(''); // Clear any previous errors
-      alert(`Successfully imported ${result.data.imported} foods with accurate usage counts! ${result.data.duplicates} were already in your database.`);
-      
-      // Reload the personal foods list
+      alert(result.message || `${result.data?.importedCount || 0} new foods imported, ${result.data?.duplicates || 0} duplicates found/updated.`);
       loadPersonalFoods();
-      setImportDialogOpen(false);
-    } catch (error: any) {
-      console.error('Import error:', error);
-      setError(error.message || 'Failed to import foods from logs');
+    } catch (err: any) {
+      setError(err.message || 'Import failed. Please try again.');
     } finally {
       setImporting(false);
+      setImportDialogOpen(false);
     }
   };
 
@@ -391,164 +377,162 @@ const PersonalFoods: React.FC = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: 'background.paper', p: { xs: 1, sm: 2, md: 3 } }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold', color: 'primary.main' }}>
-        My Personal Foods
-      </Typography>
-
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-        <TextField
-          label="Search Foods"
-          variant="outlined"
-          size="small"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ minWidth: { xs: '100%', sm: 300 } }}
-        />
-        <Stack direction="row" spacing={1} alignItems="center">
-          <TextField
-            select
-            label="Sort By"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'recent' | 'alphabetical' | 'timesUsed')}
-            size="small"
-            variant="outlined"
-            sx={{ minWidth: 150 }}
-          >
-            <MenuItem value="recent">Most Recent</MenuItem>
-            <MenuItem value="alphabetical">A-Z</MenuItem>
-            <MenuItem value="timesUsed">Most Used</MenuItem>
-          </TextField>
-          <TextField
-            select
-            label="Filter by Category"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            size="small"
-            variant="outlined"
-            sx={{ minWidth: 180 }}
-          >
-            {categories.map((category) => (
-              <MenuItem key={category.value} value={category.value}>
-                {category.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Stack>
+        <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+          My Personal Foods
+        </Typography>
+        <Box sx={{display: 'flex', gap: 1}}>
+            <Button 
+                variant="outlined" 
+                startIcon={<ImportIcon />} 
+                onClick={() => setImportDialogOpen(true)}
+            >
+                Import from Logs
+            </Button>
+            <Tooltip title="Add New Personal Food">
+                <Fab 
+                  color="primary" 
+                  aria-label="add food"
+                  onClick={() => { resetForm(); setCreateDialogOpen(true); }}
+                  sx={{ position: 'fixed', bottom: { xs: 70, sm: 30 }, right: { xs: 16, sm: 30 }, zIndex: 1050 }}
+                >
+                    <AddIcon />
+                </Fab>
+            </Tooltip>
+        </Box>
       </Box>
 
-      <Tabs value={currentTab} onChange={(event, newValue) => setCurrentTab(newValue)} indicatorColor="primary" textColor="primary" variant="fullWidth">
-        <Tab label="All Foods" icon={<RestaurantIcon />} iconPosition="start" />
-        <Tab label="Favorites" icon={<FavoriteIcon />} iconPosition="start" />
-        <Tab label="By Category" icon={<CategoryIcon />} iconPosition="start" />
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+
+      <Paper elevation={1} sx={{ p: 1.5, mb: 2, borderRadius: 'var(--border-radius-lg)' }}>
+        <Box sx={{ width: '100%' }}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Search my foods..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+              sx: { borderRadius: 'var(--border-radius-md)' }
+            }}
+          />
+        </Box>
+      </Paper>
+
+      <Tabs 
+        value={currentTab} 
+        onChange={(e, newValue) => setCurrentTab(newValue)} 
+        centered 
+        variant="fullWidth" 
+        sx={{mb:2}}
+      >
+        <Tab 
+          label="Popular" 
+          icon={<StarIcon />} 
+          iconPosition="start" 
+          sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, minWidth: {xs: 'auto'} }}
+        />
+        <Tab 
+          label="Recent" 
+          icon={<AccessTimeIcon />} 
+          iconPosition="start" 
+          sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, minWidth: {xs: 'auto'} }}
+        />
+        <Tab 
+          label="Favorites" 
+          icon={<FavoriteIcon />} 
+          iconPosition="start" 
+          sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, minWidth: {xs: 'auto'} }}
+        />
       </Tabs>
 
       <TabPanel value={currentTab} index={0}>
-        <FoodList
-          foods={personalFoods}
-          loading={loading}
-          onEdit={openEditDialog}
-          onDelete={handleDeleteFood}
-          onToggleFavorite={handleToggleFavorite}
-          getCategoryColor={getCategoryColor}
-          formatLastUsed={formatLastUsed}
+        <FoodList 
+            foods={personalFoods}
+            loading={loading}
+            onEdit={openEditDialog}
+            onDelete={handleDeleteFood}
+            onToggleFavorite={handleToggleFavorite}
+            getCategoryColor={getCategoryColor}
+            formatLastUsed={formatLastUsed}
         />
       </TabPanel>
       <TabPanel value={currentTab} index={1}>
-        <FoodList
-          foods={personalFoods.filter(food => food.isFavorite)}
-          loading={loading}
-          onEdit={openEditDialog}
-          onDelete={handleDeleteFood}
-          onToggleFavorite={handleToggleFavorite}
-          getCategoryColor={getCategoryColor}
-          formatLastUsed={formatLastUsed}
+        <FoodList 
+            foods={personalFoods}
+            loading={loading}
+            onEdit={openEditDialog}
+            onDelete={handleDeleteFood}
+            onToggleFavorite={handleToggleFavorite}
+            getCategoryColor={getCategoryColor}
+            formatLastUsed={formatLastUsed}
         />
       </TabPanel>
       <TabPanel value={currentTab} index={2}>
-        {/* This tab can be used to display foods grouped by category if needed, or removed if filter is sufficient */}
-        <Typography>Filter by category using the dropdown above.</Typography>
-         <FoodList
-          foods={personalFoods} // Already filtered by selectedCategory in API call
-          loading={loading}
-          onEdit={openEditDialog}
-          onDelete={handleDeleteFood}
-          onToggleFavorite={handleToggleFavorite}
-          getCategoryColor={getCategoryColor}
-          formatLastUsed={formatLastUsed}
+        <FoodList 
+            foods={personalFoods}
+            loading={loading}
+            onEdit={openEditDialog}
+            onDelete={handleDeleteFood}
+            onToggleFavorite={handleToggleFavorite}
+            getCategoryColor={getCategoryColor}
+            formatLastUsed={formatLastUsed}
         />
       </TabPanel>
 
-      {/* Create/Edit Dialogs and Import Dialog as before */}
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Personal Food</DialogTitle>
+      <Dialog open={createDialogOpen || editDialogOpen} onClose={() => { setCreateDialogOpen(false); setEditDialogOpen(false); setSelectedFood(null); resetForm(); }} maxWidth="sm" fullWidth>
+        <DialogTitle>{selectedFood ? 'Edit' : 'Create'} Personal Food</DialogTitle>
         <DialogContent>
-          <FoodForm formData={formData} setFormData={setFormData} categories={categories} units={units} />
+             <FoodForm formData={formData} setFormData={setFormData} categories={categories} units={units} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleCreateFood} variant="contained" disabled={loading}>
-            {loading ? <CircularProgress size={24} /> : 'Create Food'}
+          <Button onClick={() => { setCreateDialogOpen(false); setEditDialogOpen(false); setSelectedFood(null); resetForm(); }}>Cancel</Button>
+          <Button onClick={selectedFood ? handleEditFood : handleCreateFood} variant="contained" disabled={loading}>
+            {loading ? <CircularProgress size={24}/> : (selectedFood ? 'Save Changes' : 'Create Food')}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Personal Food</DialogTitle>
+      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Import Foods from Your Logs</DialogTitle>
         <DialogContent>
-          <FoodForm formData={formData} setFormData={setFormData} categories={categories} units={units} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleEditFood} variant="contained" disabled={loading}>
-            {loading ? <CircularProgress size={24} /> : 'Save Changes'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)}>
-        <DialogTitle>Import Foods from Log</DialogTitle>
-        <DialogContent>
-          <Typography>This will import unique foods from your recent food logs (last 30 days) into your personal food list.</Typography>
-          {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
+            <DialogContentText sx={{mb: 2}}>
+                Quickly add foods to your personal list that you've logged recently.
+                Select how far back you'd like to search.
+            </DialogContentText>
+          <TextField
+            select
+            fullWidth
+            label="Import foods logged in the last..."
+            value={importDays}
+            onChange={(e) => setImportDays(Number(e.target.value))}
+            variant="outlined"
+            sx={{mt:1}}
+          >
+            <MenuItem value={7}>7 days</MenuItem>
+            <MenuItem value={30}>30 days</MenuItem>
+            <MenuItem value={90}>90 days</MenuItem>
+            <MenuItem value={365}>1 Year</MenuItem>
+          </TextField>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setImportDialogOpen(false)}>Cancel</Button>
-          <Button onClick={() => handleImportFromLogs(30)} variant="contained" disabled={importing}>
-            {importing ? <CircularProgress size={24} /> : 'Import Now'}
+          <Button onClick={() => handleImportFromLogs(importDays)} variant="contained" disabled={importing}>
+            {importing ? <CircularProgress size={24} /> : 'Start Import'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Tooltip title="Add New Personal Food">
-        <Fab
-          color="primary"
-          aria-label="add"
-          onClick={() => setCreateDialogOpen(true)}
-          sx={{
-            position: 'fixed',
-            bottom: { xs: 80, sm: 30 }, // Adjusted for mobile bottom nav
-            right: { xs: 20, sm: 30 },
-            zIndex: 1000
-          }}
-        >
-          <AddIcon />
-        </Fab>
-      </Tooltip>
     </Box>
   );
 };
 
-// Food List Component
 interface FoodListProps {
   foods: PersonalFood[];
   loading: boolean;
@@ -627,7 +611,6 @@ const FoodList: React.FC<FoodListProps> = ({
             }
           />
           
-          {/* Mobile-friendly action buttons */}
           <Box sx={{ 
             display: 'flex',
             flexDirection: { xs: 'row', sm: 'row' },
@@ -670,7 +653,6 @@ const FoodList: React.FC<FoodListProps> = ({
   );
 };
 
-// Food Form Component
 interface FoodFormProps {
   formData: any;
   setFormData: (data: any) => void;

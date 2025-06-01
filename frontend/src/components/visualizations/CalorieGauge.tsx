@@ -27,10 +27,16 @@ const CalorieGauge: React.FC<CalorieGaugeProps> = ({
   const sizeConfig = {
     sm: { radius: 70, strokeWidth: 12, fontSize: '14px', centerSize: 16 },
     md: { radius: 90, strokeWidth: 16, fontSize: '18px', centerSize: 20 },
-    lg: { radius: 110, strokeWidth: 20, fontSize: '22px', centerSize: 24 }
+    lg: { radius: 165, strokeWidth: 30, fontSize: '30px', centerSize: 36 }
   };
   
   const config = sizeConfig[size];
+  
+  // Define viewBox dimensions based on radius and padding
+  const padding = 20; // General padding around the gauge elements
+  const viewBoxWidth = config.radius * 2 + padding * 2;
+  const viewBoxHeight = config.radius * 1.5 + padding * 2 + (config.strokeWidth); // Adjusted for 3/4 circle height
+                                                                               // and ensure bottom stroke is visible.
   
   // Color based on progress - using neon colors to match the rest of the app
   const getGaugeColor = () => {
@@ -71,12 +77,12 @@ const CalorieGauge: React.FC<CalorieGaugeProps> = ({
   const progressPath = createArcPath(config.radius, startAngle, progressEndAngle);
 
   return (
-    <div className={`calorie-gauge calorie-gauge--${size}`}>
+    <div className={`calorie-gauge calorie-gauge--${size}`} style={{ width: '100%' }}>
       <div className="gauge-container">
         <svg
-          width={config.radius * 2 + 40}
-          height={config.radius * 1.5 + 40}
+          viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
           className="gauge-svg"
+          style={{ width: '100%', height: 'auto' }}
         >
           {/* Gradient definitions */}
           <defs>
@@ -185,17 +191,6 @@ const CalorieGauge: React.FC<CalorieGaugeProps> = ({
             <tspan x={config.radius + 20} dy="20" className="gauge-unit">
               calories
             </tspan>
-          </text>
-
-          {/* Goal indicator */}
-          <text
-            x={config.radius + 20}
-            y={config.radius * 1.8 + 20}
-            textAnchor="middle"
-            className="gauge-goal-text"
-            style={{ fontSize: `${parseFloat(config.fontSize) * 0.75}px` }}
-          >
-            Goal: {Math.round(goal).toLocaleString()}
           </text>
         </svg>
       </div>
