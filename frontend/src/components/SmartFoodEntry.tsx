@@ -72,7 +72,7 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
 
-  const debouncedInput = useDebounce(currentInput, 300);
+  const debouncedInput = useDebounce(currentInput, 750);
 
   // Search personal foods as user types
   useEffect(() => {
