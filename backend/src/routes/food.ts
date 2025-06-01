@@ -486,22 +486,24 @@ router.post('/logs', protect, asyncHandler(async (req, res) => {
 // @route   POST /api/food/logs/:date
 // @access  Private
 router.post('/logs/:date', protect, asyncHandler(async (req, res) => {
-  const { date } = req.params;
+  const { date } = req.params; // This is the 'YYYY-MM-DD' string
   const { meals } = req.body;
   
   if (!meals) {
     throw createError('Meals are required', 400);
   }
 
-  const targetDate = new Date(date);
+  // const targetDate = new Date(date); // OLD: Converted to Date object
+  const dateString = date; // NEW: Use the string directly
   
   // Delete existing logs for this date
   await FoodLog.deleteMany({
     userId: req.user.id,
-    date: {
-      $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
-      $lte: new Date(targetDate.setHours(23, 59, 59, 999))
-    }
+    // date: { // OLD: Date object comparison
+    //   $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
+    //   $lte: new Date(targetDate.setHours(23, 59, 59, 999))
+    // }
+    date: dateString // NEW: String comparison
   });
 
   // Create new logs for each meal type
@@ -560,7 +562,8 @@ router.post('/logs/:date', protect, asyncHandler(async (req, res) => {
 
       const foodLog = await FoodLog.create({
         userId: req.user.id,
-        date: targetDate,  // Use Date object instead of string
+        // date: targetDate,  // OLD: Use Date object instead of string
+        date: dateString, // NEW: Use the 'YYYY-MM-DD' string
         mealType: mealTypeKey,
         foods
       });
@@ -572,10 +575,11 @@ router.post('/logs/:date', protect, asyncHandler(async (req, res) => {
   // Return the grouped format by calling the get route logic
   const foodLogs = await FoodLog.find({
     userId: req.user.id,
-    date: {
-      $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
-      $lte: new Date(targetDate.setHours(23, 59, 59, 999))
-    }
+    // date: { // OLD: Date object comparison
+    //   $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
+    //   $lte: new Date(targetDate.setHours(23, 59, 59, 999))
+    // }
+    date: dateString // NEW: String comparison
   });
 
   // Group by meal type
@@ -627,9 +631,9 @@ router.post('/logs/:date', protect, asyncHandler(async (req, res) => {
   });
 
   const foodLogEntry = {
-    _id: targetDate.toISOString().split('T')[0],
+    _id: targetDate.toISOString().split('T')[0], // This _id is fine for response structure
     userId: req.user.id,
-    date: targetDate,
+    date: dateString, // NEW: Use the 'YYYY-MM-DD' string in response
     meals,
     totalNutrition,
     createdAt: createdLogs[0]?.createdAt || new Date(),
@@ -646,22 +650,24 @@ router.post('/logs/:date', protect, asyncHandler(async (req, res) => {
 // @route   PUT /api/food/logs/:date
 // @access  Private
 router.put('/logs/:date', protect, asyncHandler(async (req, res) => {
-  const { date } = req.params;
+  const { date } = req.params; // This is the 'YYYY-MM-DD' string
   const { meals } = req.body;
   
   if (!meals) {
     throw createError('Meals are required', 400);
   }
 
-  const targetDate = new Date(date);
+  // const targetDate = new Date(date); // OLD: Converted to Date object
+  const dateString = date; // NEW: Use the string directly
   
   // Delete existing logs for this date
   await FoodLog.deleteMany({
     userId: req.user.id,
-    date: {
-      $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
-      $lte: new Date(targetDate.setHours(23, 59, 59, 999))
-    }
+    // date: { // OLD: Date object comparison
+    //  $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
+    //  $lte: new Date(targetDate.setHours(23, 59, 59, 999))
+    // }
+    date: dateString // NEW: String comparison
   });
 
   // Create new logs for each meal type
@@ -688,7 +694,8 @@ router.put('/logs/:date', protect, asyncHandler(async (req, res) => {
 
       const foodLog = await FoodLog.create({
         userId: req.user.id,
-        date: targetDate,  // Use Date object instead of string
+        // date: targetDate,  // OLD: Use Date object instead of string
+        date: dateString, // NEW: Use the 'YYYY-MM-DD' string
         mealType: mealTypeKey,
         foods
       });
@@ -700,10 +707,11 @@ router.put('/logs/:date', protect, asyncHandler(async (req, res) => {
   // Return the updated grouped format
   const foodLogs = await FoodLog.find({
     userId: req.user.id,
-    date: {
-      $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
-      $lte: new Date(targetDate.setHours(23, 59, 59, 999))
-    }
+    // date: { // OLD: Date object comparison
+    //  $gte: new Date(targetDate.setHours(0, 0, 0, 0)),
+    //  $lte: new Date(targetDate.setHours(23, 59, 59, 999))
+    // }
+    date: dateString // NEW: String comparison
   });
 
   // Group by meal type
@@ -771,9 +779,9 @@ router.put('/logs/:date', protect, asyncHandler(async (req, res) => {
   });
 
   const foodLogEntry = {
-    _id: targetDate.toISOString().split('T')[0],
+    _id: targetDate.toISOString().split('T')[0], // This _id is fine for response structure
     userId: req.user.id,
-    date: targetDate,
+    date: dateString, // NEW: Use the 'YYYY-MM-DD' string in response
     meals: resultMeals,
     totalNutrition,
     createdAt: createdLogs[0]?.createdAt || new Date(),
