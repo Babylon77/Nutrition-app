@@ -73,6 +73,7 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
   const [error, setError] = useState('');
 
   const debouncedInput = useDebounce(currentInput, 750);
+  const searchCache = React.useRef<{ [key: string]: PersonalFood[] }>({});
 
   // Search personal foods as user types
   useEffect(() => {
@@ -87,10 +88,21 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
   useEffect(() => {
     if (open) {
       loadQueue();
+    } else {
+      // Clear search cache when dialog closes
+      searchCache.current = {}; 
     }
   }, [open]);
 
   const searchPersonalFoods = async (query: string) => {
+    if (searchCache.current[query]) {
+      console.log(`CACHE HIT for: "${query}"`);
+      setPersonalSuggestions(searchCache.current[query]);
+      setIsSearching(false); // Ensure searching state is reset
+      return;
+    }
+    console.log(`CACHE MISS for: "${query}"`);
+
     try {
       setIsSearching(true);
       console.log(`🔍 Searching personal foods for: "${query}"`);
@@ -120,8 +132,10 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
       console.log(`✅ Search result:`, result);
       
       if (result.success) {
-        setPersonalSuggestions(result.data.suggestions || []);
-        console.log(`📝 Found ${result.data.suggestions?.length || 0} personal foods`);
+        const suggestions = result.data.suggestions || [];
+        setPersonalSuggestions(suggestions);
+        searchCache.current[query] = suggestions; // Store in cache
+        console.log(`📝 Found ${suggestions.length} personal foods`);
       } else {
         console.error('Search unsuccessful:', result);
         setError('Search was unsuccessful');
