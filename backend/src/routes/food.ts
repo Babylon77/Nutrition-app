@@ -631,9 +631,9 @@ router.post('/logs/:date', protect, asyncHandler(async (req, res) => {
   });
 
   const foodLogEntry = {
-    _id: targetDate.toISOString().split('T')[0], // This _id is fine for response structure
+    _id: new Date(dateString).toISOString().split('T')[0], // This _id is fine for response structure
     userId: req.user.id,
-    date: dateString, // NEW: Use the 'YYYY-MM-DD' string in response
+    date: dateString, // NEW: Use the 'YYYY-MM-DD' string in response for consistency
     meals,
     totalNutrition,
     createdAt: createdLogs[0]?.createdAt || new Date(),
@@ -779,7 +779,7 @@ router.put('/logs/:date', protect, asyncHandler(async (req, res) => {
   });
 
   const foodLogEntry = {
-    _id: targetDate.toISOString().split('T')[0], // This _id is fine for response structure
+    _id: new Date(dateString).toISOString().split('T')[0], // This _id is fine for response structure
     userId: req.user.id,
     date: dateString, // NEW: Use the 'YYYY-MM-DD' string in response
     meals: resultMeals,
