@@ -322,16 +322,16 @@ export const Layout: React.FC = () => {
       {/* Main Content */}
       <Box
         component="main"
-        className="main-content"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, sm: 3 },
-          width: { sm: `calc(100% - ${isMobile ? 0 : drawerWidth}px)` },
-          backgroundColor: 'var(--color-bg-primary)',
-          minHeight: '100vh',
+          p: 3,
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          marginTop: isMobile ? '56px' : '64px',
+          backgroundColor: 'var(--color-bg-main)',
+          minHeight: 'calc(100vh - (isMobile ? 56px : 64px))',
+          pb: isMobile ? '80px' : 3,
         }}
       >
-        <Toolbar />
         <Outlet />
       </Box>
 

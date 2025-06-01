@@ -165,8 +165,8 @@ const CalorieGauge: React.FC<CalorieGaugeProps> = ({
             cy={config.radius + 20}
             r={config.centerSize}
             fill="var(--color-bg-card)"
-            stroke={getGaugeColor()}
-            strokeWidth="3"
+            stroke="var(--color-border-light)"
+            strokeWidth="1"
             filter="url(#shadow)"
           />
           

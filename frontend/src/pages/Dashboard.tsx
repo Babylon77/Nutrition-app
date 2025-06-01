@@ -35,6 +35,7 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [nutritionSummary, setNutritionSummary] = useState<NutritionSummary | null>(null);
   const [recentBloodwork, setRecentBloodwork] = useState<BloodworkEntry | null>(null);
+  const [allBloodworkEntries, setAllBloodworkEntries] = useState<BloodworkEntry[]>([]);
   const [recentAnalyses, setRecentAnalyses] = useState<Analysis[]>([]);
   const [error, setError] = useState<string>('');
 
@@ -88,7 +89,7 @@ export const Dashboard: React.FC = () => {
           setNutritionSummary(nutrition);
         }
 
-        // Fetch recent bloodwork
+        // Fetch recent bloodwork (for detailed display if needed)
         try {
           const bloodworkResponse = await apiService.getBloodworkEntries(1, 1);
           if (bloodworkResponse.data.length > 0) {
@@ -96,6 +97,15 @@ export const Dashboard: React.FC = () => {
           }
         } catch (err) {
           // No bloodwork found, that's okay
+        }
+
+        // Fetch all bloodwork entries for summary
+        try {
+          const allBloodworkResponse = await apiService.getBloodworkEntries(1, 100); // Fetch up to 100 entries
+          setAllBloodworkEntries(allBloodworkResponse.data);
+        } catch (err) {
+          console.error("Failed to fetch all bloodwork entries for summary:", err);
+          // Handle error if necessary, e.g., set an error state or display a message
         }
 
         // Fetch recent analyses
@@ -317,37 +327,38 @@ export const Dashboard: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
-                <BiotechIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Health Metrics</Typography>
+                <BiotechIcon color="error" sx={{ mr: 1 }} />
+                <Typography variant="h6">Health & Bloodwork</Typography>
               </Box>
-              
-              {recentBloodwork ? (
+              {allBloodworkEntries.length > 0 ? (
                 <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Latest Test: {new Date(recentBloodwork.date).toLocaleDateString()}
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Total Tests Logged: {allBloodworkEntries.length}
                   </Typography>
-                  
-                  <Box mt={2}>
-                    <Typography variant="body2" gutterBottom>Lab Values:</Typography>
-                    <Box display="flex" flexWrap="wrap" gap={1}>
-                      {recentBloodwork.labValues.slice(0, 4).map((lab, index) => (
-                        <Chip
-                          key={index}
-                          label={`${lab.name}: ${lab.value} ${lab.unit}`}
-                          size="small"
-                          color={lab.status && lab.status !== 'normal' ? 'warning' : 'default'}
-                          icon={lab.status && lab.status !== 'normal' ? <WarningIcon /> : <CheckCircleIcon />}
-                        />
-                      ))}
-                      {recentBloodwork.labValues.length > 4 && (
-                        <Chip
-                          label={`+${recentBloodwork.labValues.length - 4} more`}
-                          size="small"
-                          variant="outlined"
-                        />
-                      )}
+                  {recentBloodwork && (
+                    <Box>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Most Recent Test: {new Date(recentBloodwork.date).toLocaleDateString()}
+                      </Typography>
+                      <List dense sx={{ maxHeight: 150, overflow: 'auto' }}>
+                        {recentBloodwork.labValues.slice(0, 3).map((value, index) => (
+                          <ListItem key={index} sx={{ py: 0.2}}>
+                            <ListItemText 
+                              primary={value.name} 
+                              secondary={`${value.value} ${value.unit}`}
+                              primaryTypographyProps={{ variant: 'body2' }}
+                              secondaryTypographyProps={{ variant: 'caption' }}
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
                     </Box>
-                  </Box>
+                  )}
+                  {allBloodworkEntries.length > 1 && (
+                    <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
+                      Other test dates: {allBloodworkEntries.slice(1, 4).map(bw => new Date(bw.date).toLocaleDateString()).join(', ')}{allBloodworkEntries.length > 4 ? '...' : ''}
+                    </Typography>
+                  )}
                 </Box>
               ) : (
                 <Box textAlign="center" py={3}>

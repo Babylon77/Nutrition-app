@@ -7,7 +7,8 @@ import {
   BeakerIcon, 
   HeartIcon,
   UserCircleIcon,
-  PlusIcon 
+  PlusIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { 
   HomeIcon as HomeSolid, 
@@ -68,6 +69,14 @@ const navigationItems: NavigationItem[] = [
     icon: HeartIcon,
     solidIcon: HeartSolid,
     color: 'var(--color-health)'
+  },
+  {
+    id: 'analysis',
+    label: 'Analysis',
+    path: '/analysis',
+    icon: BeakerIcon,
+    solidIcon: BeakerSolid,
+    color: 'var(--color-analysis)'
   },
   {
     id: 'profile',

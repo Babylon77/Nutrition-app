@@ -163,7 +163,7 @@ export const Login: React.FC = () => {
             <Box textAlign="center">
               <Typography variant="body2">
                 Don't have an account?{' '}
-                <Link to="/register" style={{ textDecoration: 'none', color: 'inherit' }}>
+                <Link to="/signup" style={{ textDecoration: 'none', color: 'inherit' }}>
                   <Button variant="text" color="primary">
                     Sign Up
                   </Button>
