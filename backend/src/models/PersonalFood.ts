@@ -246,22 +246,22 @@ personalFoodSchema.statics.findByUser = function(userId: string, options: any = 
     category,
     favorites = false,
     limit = 20,
-    sort = 'frequent' // 'frequent', 'recent', 'alphabetical'
+    sort = 'timesUsed_desc' // Default to timesUsed_desc, matching one of the new explicit options
   } = options;
 
   let query = this.find({ userId });
 
-  // Apply filters
   if (search) {
+    const searchRegex = new RegExp(search.toLowerCase(), 'i');
     query = query.find({
       $or: [
-        { normalizedName: new RegExp(search.toLowerCase(), 'i') },
-        { name: new RegExp(search, 'i') }
+        { normalizedName: searchRegex },
+        { name: searchRegex } // Keep original name search as well if needed
       ]
     });
   }
 
-  if (category) {
+  if (category && category !== 'all') { // Explicitly ignore 'all'
     query = query.find({ category });
   }
 
@@ -269,19 +269,18 @@ personalFoodSchema.statics.findByUser = function(userId: string, options: any = 
     query = query.find({ isFavorite: true });
   }
 
-  // Apply sorting
+  // Updated sort logic
   switch (sort) {
-    case 'frequent':
-      query = query.sort({ timesUsed: -1, name: 1 });
+    case 'name_asc':
+      query = query.sort({ normalizedName: 1 });
       break;
-    case 'recent':
-      query = query.sort({ lastUsed: -1, timesUsed: -1 });
+    case 'lastUsed_desc':
+      query = query.sort({ lastUsed: -1 });
       break;
-    case 'alphabetical':
-      query = query.sort({ name: 1 });
+    case 'timesUsed_desc':
+    default: // Default to sorting by timesUsed descending
+      query = query.sort({ timesUsed: -1 });
       break;
-    default:
-      query = query.sort({ timesUsed: -1, name: 1 });
   }
 
   return query.limit(limit);

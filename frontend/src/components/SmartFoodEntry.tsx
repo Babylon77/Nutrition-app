@@ -27,6 +27,7 @@ import {
   Clear as ClearIcon,
 } from '@mui/icons-material';
 import { useDebounce } from '../hooks/useDebounce';
+import { FoodItem } from '../types';
 
 interface PersonalFood {
   _id: string;
@@ -52,15 +53,17 @@ interface QueuedFood {
 interface SmartFoodEntryProps {
   open: boolean;
   onClose: () => void;
-  onFoodsAdded: (foods: any[]) => void;
+  onFoodsAdded: (foodItems: any[]) => void;
   defaultMealType?: string;
+  selectedDate?: Date;
 }
 
 export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
   open,
   onClose,
   onFoodsAdded,
-  defaultMealType = 'breakfast'
+  defaultMealType = 'breakfast',
+  selectedDate
 }) => {
   const [currentInput, setCurrentInput] = useState('');
   const [quantity, setQuantity] = useState(1);

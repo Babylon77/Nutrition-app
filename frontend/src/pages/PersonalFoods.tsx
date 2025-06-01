@@ -95,7 +95,7 @@ const PersonalFoods: React.FC = () => {
   const [selectedFood, setSelectedFood] = useState<PersonalFood | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [sortBy, setSortBy] = useState<'recent' | 'alphabetical'>('recent');
+  const [sortBy, setSortBy] = useState<'recent' | 'alphabetical' | 'timesUsed'>('recent');
 
   // Form state for create/edit
   const [formData, setFormData] = useState({
@@ -144,8 +144,9 @@ const PersonalFoods: React.FC = () => {
       if (searchQuery) params.append('search', searchQuery);
       if (selectedCategory !== 'all') params.append('category', selectedCategory);
       if (currentTab === 1) params.append('favorites', 'true');
-      if (sortBy === 'recent') params.append('sort', 'recent');
-      if (sortBy === 'alphabetical') params.append('sort', 'alphabetical');
+      if (sortBy === 'recent') params.append('sort', 'lastUsed_desc');
+      if (sortBy === 'alphabetical') params.append('sort', 'name_asc');
+      if (sortBy === 'timesUsed') params.append('sort', 'timesUsed_desc');
 
       const response = await fetch(`/api/personal-foods?${params.toString()}`, {
         headers: {
@@ -390,280 +391,159 @@ const PersonalFoods: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-        Personal Foods
+    <Box sx={{ flexGrow: 1, bgcolor: 'background.paper', p: { xs: 1, sm: 2, md: 3 } }}>
+      <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold', color: 'primary.main' }}>
+        My Personal Foods
       </Typography>
-      <Typography 
-        variant="body1" 
-        color="text.secondary" 
-        gutterBottom 
-        sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' } }}
-      >
-        Your saved foods with quick access and favorites
-      </Typography>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <FilterListIcon />
-          <Button
+
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+        <TextField
+          label="Search Foods"
+          variant="outlined"
+          size="small"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ minWidth: { xs: '100%', sm: 300 } }}
+        />
+        <Stack direction="row" spacing={1} alignItems="center">
+          <TextField
+            select
+            label="Sort By"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'recent' | 'alphabetical' | 'timesUsed')}
+            size="small"
             variant="outlined"
-            size="small"
-            onClick={() => setSortBy(sortBy === 'recent' ? 'alphabetical' : 'recent')}
-            sx={{ 
-              fontSize: { xs: '0.625rem', sm: '0.75rem' },
-              px: { xs: 0.5, sm: 1 }
-            }}
+            sx={{ minWidth: 150 }}
           >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              Sort: {sortBy === 'recent' ? 'Recent' : 'A-Z'}
-            </Box>
-            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-              {sortBy === 'recent' ? 'Recent' : 'A-Z'}
-            </Box>
-          </Button>
-        </Box>
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 1,
-          flexDirection: { xs: 'column', sm: 'row' },
-          alignItems: { xs: 'stretch', sm: 'center' }
-        }}>
-          <Button
+            <MenuItem value="recent">Most Recent</MenuItem>
+            <MenuItem value="alphabetical">A-Z</MenuItem>
+            <MenuItem value="timesUsed">Most Used</MenuItem>
+          </TextField>
+          <TextField
+            select
+            label="Filter by Category"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            size="small"
             variant="outlined"
-            onClick={() => setImportDialogOpen(true)}
-            size="small"
-            sx={{ 
-              fontSize: { xs: '0.75rem', sm: '0.875rem' },
-              px: { xs: 1, sm: 2 }
-            }}
+            sx={{ minWidth: 180 }}
           >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              Import from Logs
-            </Box>
-            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-              Import
-            </Box>
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setCreateDialogOpen(true)}
-            size="small"
-            sx={{ 
-              fontSize: { xs: '0.75rem', sm: '0.875rem' },
-              px: { xs: 1, sm: 2 }
-            }}
-          >
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-              Add Personal Food
-            </Box>
-            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-              Add Food
-            </Box>
-          </Button>
-        </Box>
+            {categories.map((category) => (
+              <MenuItem key={category.value} value={category.value}>
+                {category.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      <Tabs value={currentTab} onChange={(event, newValue) => setCurrentTab(newValue)} indicatorColor="primary" textColor="primary" variant="fullWidth">
+        <Tab label="All Foods" icon={<RestaurantIcon />} iconPosition="start" />
+        <Tab label="Favorites" icon={<FavoriteIcon />} iconPosition="start" />
+        <Tab label="By Category" icon={<CategoryIcon />} iconPosition="start" />
+      </Tabs>
 
-      {/* Search and Filter Controls */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <TextField
-              fullWidth
-              placeholder="Search your foods..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <TextField
-              fullWidth
-              select
-              label="Category"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              {categories.map((category) => (
-                <MenuItem key={category.value} value={category.value}>
-                  {category.label}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Stack>
-        </CardContent>
-      </Card>
+      <TabPanel value={currentTab} index={0}>
+        <FoodList
+          foods={personalFoods}
+          loading={loading}
+          onEdit={openEditDialog}
+          onDelete={handleDeleteFood}
+          onToggleFavorite={handleToggleFavorite}
+          getCategoryColor={getCategoryColor}
+          formatLastUsed={formatLastUsed}
+        />
+      </TabPanel>
+      <TabPanel value={currentTab} index={1}>
+        <FoodList
+          foods={personalFoods.filter(food => food.isFavorite)}
+          loading={loading}
+          onEdit={openEditDialog}
+          onDelete={handleDeleteFood}
+          onToggleFavorite={handleToggleFavorite}
+          getCategoryColor={getCategoryColor}
+          formatLastUsed={formatLastUsed}
+        />
+      </TabPanel>
+      <TabPanel value={currentTab} index={2}>
+        {/* This tab can be used to display foods grouped by category if needed, or removed if filter is sufficient */}
+        <Typography>Filter by category using the dropdown above.</Typography>
+         <FoodList
+          foods={personalFoods} // Already filtered by selectedCategory in API call
+          loading={loading}
+          onEdit={openEditDialog}
+          onDelete={handleDeleteFood}
+          onToggleFavorite={handleToggleFavorite}
+          getCategoryColor={getCategoryColor}
+          formatLastUsed={formatLastUsed}
+        />
+      </TabPanel>
 
-      {/* Tabs for different views */}
-      <Card>
-        <Tabs
-          value={currentTab}
-          onChange={(_, newValue) => setCurrentTab(newValue)}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{
-            '& .MuiTab-root': {
-              fontSize: { xs: '0.625rem', sm: '0.75rem' },
-              minWidth: { xs: '80px', sm: '120px' },
-              px: { xs: 0.5, sm: 1 }
-            }
-          }}
-        >
-          <Tab 
-            icon={<RestaurantIcon fontSize="small" />} 
-            label={
-              <>
-                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                  Most Used
-                </Box>
-                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-                  Used
-                </Box>
-              </>
-            } 
-          />
-          <Tab 
-            icon={<FavoriteIcon fontSize="small" />} 
-            label={
-              <>
-                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                  Favorites
-                </Box>
-                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-                  Faves
-                </Box>
-              </>
-            } 
-          />
-          <Tab 
-            icon={<AccessTimeIcon fontSize="small" />} 
-            label="Recent" 
-          />
-          <Tab 
-            icon={<CategoryIcon fontSize="small" />} 
-            label="A-Z" 
-          />
-        </Tabs>
-
-        <TabPanel value={currentTab} index={0}>
-          <FoodList 
-            foods={personalFoods} 
-            loading={loading}
-            onEdit={openEditDialog}
-            onDelete={handleDeleteFood}
-            onToggleFavorite={handleToggleFavorite}
-            getCategoryColor={getCategoryColor}
-            formatLastUsed={formatLastUsed}
-          />
-        </TabPanel>
-
-        <TabPanel value={currentTab} index={1}>
-          <FoodList 
-            foods={personalFoods} 
-            loading={loading}
-            onEdit={openEditDialog}
-            onDelete={handleDeleteFood}
-            onToggleFavorite={handleToggleFavorite}
-            getCategoryColor={getCategoryColor}
-            formatLastUsed={formatLastUsed}
-          />
-        </TabPanel>
-
-        <TabPanel value={currentTab} index={2}>
-          <FoodList 
-            foods={personalFoods} 
-            loading={loading}
-            onEdit={openEditDialog}
-            onDelete={handleDeleteFood}
-            onToggleFavorite={handleToggleFavorite}
-            getCategoryColor={getCategoryColor}
-            formatLastUsed={formatLastUsed}
-          />
-        </TabPanel>
-
-        <TabPanel value={currentTab} index={3}>
-          <FoodList 
-            foods={personalFoods} 
-            loading={loading}
-            onEdit={openEditDialog}
-            onDelete={handleDeleteFood}
-            onToggleFavorite={handleToggleFavorite}
-            getCategoryColor={getCategoryColor}
-            formatLastUsed={formatLastUsed}
-          />
-        </TabPanel>
-      </Card>
-
-      {/* Create Food Dialog */}
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Add Custom Food</DialogTitle>
+      {/* Create/Edit Dialogs and Import Dialog as before */}
+      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add New Personal Food</DialogTitle>
         <DialogContent>
-          <FoodForm
-            formData={formData}
-            setFormData={setFormData}
-            categories={categories.filter(c => c.value !== 'all')}
-            units={units}
-          />
+          <FoodForm formData={formData} setFormData={setFormData} categories={categories} units={units} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleCreateFood} variant="contained" disabled={loading}>
-            {loading ? <CircularProgress size={20} /> : 'Create Food'}
+            {loading ? <CircularProgress size={24} /> : 'Create Food'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Edit Food Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Edit Food</DialogTitle>
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Personal Food</DialogTitle>
         <DialogContent>
-          <FoodForm
-            formData={formData}
-            setFormData={setFormData}
-            categories={categories.filter(c => c.value !== 'all')}
-            units={units}
-          />
+          <FoodForm formData={formData} setFormData={setFormData} categories={categories} units={units} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleEditFood} variant="contained" disabled={loading}>
-            {loading ? <CircularProgress size={20} /> : 'Update Food'}
+            {loading ? <CircularProgress size={24} /> : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Import from Logs Dialog */}
-      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Import Foods from Logs</DialogTitle>
+      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)}>
+        <DialogTitle>Import Foods from Log</DialogTitle>
         <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Import foods from your recent food logs into your personal database. This will help populate your database with foods you've already analyzed.
-          </Typography>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            This will import unique foods from your last 30 days of food logs. Duplicate foods will be skipped.
-          </Alert>
+          <Typography>This will import unique foods from your recent food logs (last 30 days) into your personal food list.</Typography>
+          {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setImportDialogOpen(false)}>Cancel</Button>
-          <Button 
-            onClick={() => handleImportFromLogs(30)} 
-            variant="contained" 
-            disabled={importing}
-          >
-            {importing ? <CircularProgress size={20} /> : 'Import Foods'}
+          <Button onClick={() => handleImportFromLogs(30)} variant="contained" disabled={importing}>
+            {importing ? <CircularProgress size={24} /> : 'Import Now'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Tooltip title="Add New Personal Food">
+        <Fab
+          color="primary"
+          aria-label="add"
+          onClick={() => setCreateDialogOpen(true)}
+          sx={{
+            position: 'fixed',
+            bottom: { xs: 80, sm: 30 }, // Adjusted for mobile bottom nav
+            right: { xs: 20, sm: 30 },
+            zIndex: 1000
+          }}
+        >
+          <AddIcon />
+        </Fab>
+      </Tooltip>
     </Box>
   );
 };

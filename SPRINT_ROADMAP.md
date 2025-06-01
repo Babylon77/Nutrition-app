@@ -273,6 +273,21 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 
 ---
 
+### **Post-Sprint 2.5 Stability Fixes & Optimizations (June 2025)** 🛠️
+*A series of critical fixes and improvements were implemented to ensure application stability on Render and resolve data integrity issues that arose during and after Sprint 2.5 deployment.*
+
+- **Render Deployment Stability:**
+  - **Session Management**: Implemented `connect-mongo` for persistent MongoDB session storage, resolving `MemoryStore` warnings and ensuring sessions persist across deployments.
+  - **Food Queue Robustness**: Addressed a race condition in food queue processing. Initially by adding `req.session.save()`, then by refactoring to a stateless approach where the frontend sends the complete queue to the backend for processing.
+  - **Build Error Resolution**: Fixed a TypeScript fallthrough error (`TS7029`) in `backend/src/routes/food.ts` that was causing Render builds to fail.
+  - **Rate Limiting Adjustments**: Temporarily increased backend rate limits and frontend debounce times to mitigate "Too many requests" errors on Render. Implemented client-side caching for personal food search as a long-term optimization.
+
+- **Data Integrity & Consistency (Local & Render):**
+  - **Date Handling for Food Logs**: Standardized on `YYYY-MM-DD` string format for `FoodLog.date` across storage and querying. This fixed issues with calorie meter discrepancies and food logs not appearing for the correct date due to timezone or `Date` object vs. string mismatches.
+  - **Backend `targetDate` Error**: Corrected a TypeScript error in `backend/src/routes/food.ts` where `targetDate` was undefined (after date string refactor), ensuring the backend dev server could start and responses were formatted correctly.
+
+---
+
 ## **SPRINT 3: Advanced Analytics & AI Features**
 *Priority: HIGH | Duration: 2 weeks | Based on Advanced Analytics Features*
 

@@ -38,12 +38,15 @@ import {
   Close as CloseIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  AddCircleOutline as AddCircleOutlineIcon,
+  RemoveCircleOutline as RemoveCircleOutlineIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useForm, Controller } from 'react-hook-form';
 import { SmartFoodEntry } from '../components/SmartFoodEntry';
+import CompactNutritionSummary from '../components/visualizations/CompactNutritionSummary'; // Import the new component
 
 interface EnhancedNutrition {
   // Macronutrients
@@ -206,7 +209,7 @@ export const FoodLog: React.FC = () => {
   const [foodItems, setFoodItems] = useState<EnhancedFoodItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const [addFoodOpen, setAddFoodOpen] = useState(false);
+  const [isSmartEntryOpen, setIsSmartEntryOpen] = useState(false);
   const [addingFood, setAddingFood] = useState(false);
   const [searchingSuggestions, setSearchingSuggestions] = useState(false);
   const [personalFoodSuggestions, setPersonalFoodSuggestions] = useState<any[]>([]);
@@ -425,7 +428,7 @@ export const FoodLog: React.FC = () => {
         }),
       });
 
-      setAddFoodOpen(false);
+      setIsSmartEntryOpen(false);
       reset();
       setPersonalFoodSuggestions([]);
       console.log('✅ PERSONAL FOOD - Successfully added personal food');
@@ -447,166 +450,61 @@ export const FoodLog: React.FC = () => {
   // Handle quantity editing with nutrition scaling
   const startEditingQuantity = (index: number, currentQuantity: number, currentUnit: string) => {
     setEditingItemIndex(index);
-    setEditQuantity(currentQuantity.toString());
+    setEditQuantity(String(currentQuantity));
     setEditUnit(currentUnit);
   };
 
   const cancelEditingQuantity = () => {
     setEditingItemIndex(null);
-    setEditQuantity('');
-    setEditUnit('');
   };
 
-  const saveQuantityEdit = async (index: number) => {
-    try {
-      const newQuantity = parseFloat(editQuantity);
-      if (isNaN(newQuantity) || newQuantity <= 0) {
-        setError('Quantity must be a positive number');
-        return;
+  const saveQuantityEdit = async (index: number, newQuantity?: number, newUnit?: string) => {
+    const itemToUpdate = foodItems[index];
+    if (!itemToUpdate) return;
+
+    const quantityToSave = newQuantity !== undefined ? newQuantity : parseFloat(editQuantity);
+    const unitToSave = newUnit !== undefined ? newUnit : editUnit;
+
+    if (isNaN(quantityToSave) || quantityToSave <= 0) {
+      setError('Invalid quantity.');
+      return;
+    }
+
+    // Create a deep copy of the item and its nutrition to avoid direct state mutation issues
+    const updatedItem = JSON.parse(JSON.stringify(itemToUpdate));
+    const oldQuantity = updatedItem.quantity;
+
+    updatedItem.quantity = quantityToSave;
+    updatedItem.unit = unitToSave;
+
+    // Rescale nutrition
+    const ratio = oldQuantity > 0 ? updatedItem.quantity / oldQuantity : 1;
+    if (updatedItem.nutrition) {
+      for (const key in updatedItem.nutrition) {
+        if (typeof updatedItem.nutrition[key] === 'number') {
+          updatedItem.nutrition[key] = updatedItem.nutrition[key] * ratio;
+        }
       }
-
-      const item = foodItems[index];
-      const oldQuantity = item.quantity;
-      const ratio = newQuantity / oldQuantity;
-
-      // Scale all nutrition values
-      const scaledNutrition = {
-        calories: Math.round((item.nutrition.calories || 0) * ratio),
-        protein: Math.round((item.nutrition.protein || 0) * ratio * 10) / 10,
-        carbs: Math.round((item.nutrition.carbs || 0) * ratio * 10) / 10,
-        fat: Math.round((item.nutrition.fat || 0) * ratio * 10) / 10,
-        fiber: Math.round((item.nutrition.fiber || 0) * ratio * 10) / 10,
-        sugar: Math.round((item.nutrition.sugar || 0) * ratio * 10) / 10,
-        saturatedFat: Math.round((item.nutrition.saturatedFat || 0) * ratio * 10) / 10,
-        monounsaturatedFat: Math.round((item.nutrition.monounsaturatedFat || 0) * ratio * 10) / 10,
-        polyunsaturatedFat: Math.round((item.nutrition.polyunsaturatedFat || 0) * ratio * 10) / 10,
-        transFat: Math.round((item.nutrition.transFat || 0) * ratio * 10) / 10,
-        omega3: Math.round((item.nutrition.omega3 || 0) * ratio),
-        omega6: Math.round((item.nutrition.omega6 || 0) * ratio),
-        sodium: Math.round((item.nutrition.sodium || 0) * ratio),
-        potassium: Math.round((item.nutrition.potassium || 0) * ratio),
-        calcium: Math.round((item.nutrition.calcium || 0) * ratio),
-        magnesium: Math.round((item.nutrition.magnesium || 0) * ratio),
-        phosphorus: Math.round((item.nutrition.phosphorus || 0) * ratio),
-        iron: Math.round((item.nutrition.iron || 0) * ratio * 10) / 10,
-        zinc: Math.round((item.nutrition.zinc || 0) * ratio * 10) / 10,
-        selenium: Math.round((item.nutrition.selenium || 0) * ratio),
-        vitaminA: Math.round((item.nutrition.vitaminA || 0) * ratio),
-        vitaminC: Math.round((item.nutrition.vitaminC || 0) * ratio * 10) / 10,
-        vitaminD: Math.round((item.nutrition.vitaminD || 0) * ratio * 10) / 10,
-        vitaminE: Math.round((item.nutrition.vitaminE || 0) * ratio * 10) / 10,
-        vitaminK: Math.round((item.nutrition.vitaminK || 0) * ratio),
-        thiamin: Math.round((item.nutrition.thiamin || 0) * ratio * 10) / 10,
-        riboflavin: Math.round((item.nutrition.riboflavin || 0) * ratio * 10) / 10,
-        niacin: Math.round((item.nutrition.niacin || 0) * ratio * 10) / 10,
-        vitaminB6: Math.round((item.nutrition.vitaminB6 || 0) * ratio * 10) / 10,
-        folate: Math.round((item.nutrition.folate || 0) * ratio),
-        vitaminB12: Math.round((item.nutrition.vitaminB12 || 0) * ratio * 10) / 10,
-        biotin: Math.round((item.nutrition.biotin || 0) * ratio),
-        pantothenicAcid: Math.round((item.nutrition.pantothenicAcid || 0) * ratio * 10) / 10,
-        cholesterol: Math.round((item.nutrition.cholesterol || 0) * ratio),
-        creatine: Math.round((item.nutrition.creatine || 0) * ratio)
-      };
-
-      // Scale weight conversion if it exists
-      const scaledWeightConversion = item.weightConversion ? {
-        grams: Math.round((item.weightConversion.grams || 0) * ratio),
-        ounces: Math.round((item.weightConversion.ounces || 0) * ratio * 10) / 10,
-        pounds: Math.round((item.weightConversion.pounds || 0) * ratio * 100) / 100
-      } : undefined;
-
-      const updatedItem = {
-        ...item,
-        quantity: newQuantity,
-        unit: editUnit,
-        nutrition: scaledNutrition,
-        weightConversion: scaledWeightConversion
-      };
-
-      const updatedItems = [...foodItems];
-      updatedItems[index] = updatedItem;
-      setFoodItems(updatedItems);
-
-      // Save to backend
-      await saveFoodLogs(selectedDate, updatedItems);
-
-      cancelEditingQuantity();
-      setError('');
-    } catch (err: any) {
-      setError(err.message || 'Failed to update quantity');
     }
+    
+    const updatedItems = [...foodItems];
+    updatedItems[index] = updatedItem;
+
+    setFoodItems(updatedItems);
+    await saveFoodLogs(selectedDate, updatedItems);
+    setEditingItemIndex(null); // Exit edit mode
   };
+  
+  const adjustQuantityStep = async (globalIndex: number, step: number) => {
+    const itemToUpdate = foodItems[globalIndex];
+    if (!itemToUpdate) return;
 
-  // Quick portion adjustment (0.5x, 1.5x, 2x, etc.)
-  const quickAdjustPortion = async (index: number, multiplier: number) => {
-    try {
-      const item = foodItems[index];
-      const newQuantity = Math.round(item.quantity * multiplier * 10) / 10; // Round to 1 decimal place
-
-      // Scale all nutrition values
-      const scaledNutrition = {
-        calories: Math.round((item.nutrition.calories || 0) * multiplier),
-        protein: Math.round((item.nutrition.protein || 0) * multiplier * 10) / 10,
-        carbs: Math.round((item.nutrition.carbs || 0) * multiplier * 10) / 10,
-        fat: Math.round((item.nutrition.fat || 0) * multiplier * 10) / 10,
-        fiber: Math.round((item.nutrition.fiber || 0) * multiplier * 10) / 10,
-        sugar: Math.round((item.nutrition.sugar || 0) * multiplier * 10) / 10,
-        saturatedFat: Math.round((item.nutrition.saturatedFat || 0) * multiplier * 10) / 10,
-        monounsaturatedFat: Math.round((item.nutrition.monounsaturatedFat || 0) * multiplier * 10) / 10,
-        polyunsaturatedFat: Math.round((item.nutrition.polyunsaturatedFat || 0) * multiplier * 10) / 10,
-        transFat: Math.round((item.nutrition.transFat || 0) * multiplier * 10) / 10,
-        omega3: Math.round((item.nutrition.omega3 || 0) * multiplier),
-        omega6: Math.round((item.nutrition.omega6 || 0) * multiplier),
-        sodium: Math.round((item.nutrition.sodium || 0) * multiplier),
-        potassium: Math.round((item.nutrition.potassium || 0) * multiplier),
-        calcium: Math.round((item.nutrition.calcium || 0) * multiplier),
-        magnesium: Math.round((item.nutrition.magnesium || 0) * multiplier),
-        phosphorus: Math.round((item.nutrition.phosphorus || 0) * multiplier),
-        iron: Math.round((item.nutrition.iron || 0) * multiplier * 10) / 10,
-        zinc: Math.round((item.nutrition.zinc || 0) * multiplier * 10) / 10,
-        selenium: Math.round((item.nutrition.selenium || 0) * multiplier),
-        vitaminA: Math.round((item.nutrition.vitaminA || 0) * multiplier),
-        vitaminC: Math.round((item.nutrition.vitaminC || 0) * multiplier * 10) / 10,
-        vitaminD: Math.round((item.nutrition.vitaminD || 0) * multiplier * 10) / 10,
-        vitaminE: Math.round((item.nutrition.vitaminE || 0) * multiplier * 10) / 10,
-        vitaminK: Math.round((item.nutrition.vitaminK || 0) * multiplier),
-        thiamin: Math.round((item.nutrition.thiamin || 0) * multiplier * 10) / 10,
-        riboflavin: Math.round((item.nutrition.riboflavin || 0) * multiplier * 10) / 10,
-        niacin: Math.round((item.nutrition.niacin || 0) * multiplier * 10) / 10,
-        vitaminB6: Math.round((item.nutrition.vitaminB6 || 0) * multiplier * 10) / 10,
-        folate: Math.round((item.nutrition.folate || 0) * multiplier),
-        vitaminB12: Math.round((item.nutrition.vitaminB12 || 0) * multiplier * 10) / 10,
-        biotin: Math.round((item.nutrition.biotin || 0) * multiplier),
-        pantothenicAcid: Math.round((item.nutrition.pantothenicAcid || 0) * multiplier * 10) / 10,
-        cholesterol: Math.round((item.nutrition.cholesterol || 0) * multiplier),
-        creatine: Math.round((item.nutrition.creatine || 0) * multiplier)
-      };
-
-      // Scale weight conversion if it exists
-      const scaledWeightConversion = item.weightConversion ? {
-        grams: Math.round((item.weightConversion.grams || 0) * multiplier),
-        ounces: Math.round((item.weightConversion.ounces || 0) * multiplier * 10) / 10,
-        pounds: Math.round((item.weightConversion.pounds || 0) * multiplier * 100) / 100
-      } : undefined;
-
-      const updatedItem = {
-        ...item,
-        quantity: newQuantity,
-        nutrition: scaledNutrition,
-        weightConversion: scaledWeightConversion
-      };
-
-      const updatedItems = [...foodItems];
-      updatedItems[index] = updatedItem;
-      setFoodItems(updatedItems);
-
-      // Save to backend
-      await saveFoodLogs(selectedDate, updatedItems);
-
-      setError('');
-    } catch (err: any) {
-      setError(err.message || 'Failed to adjust portion');
+    let newQuantity = parseFloat((itemToUpdate.quantity + step).toFixed(2)); // toFixed for precision with 0.5 steps
+    if (newQuantity < 0.1) {
+      newQuantity = 0.1; // Minimum quantity
     }
+    // Call saveQuantityEdit with the new quantity and existing unit
+    await saveQuantityEdit(globalIndex, newQuantity, itemToUpdate.unit);
   };
 
   const toggleNutritionExpansion = (globalIndex: number) => {
@@ -710,7 +608,7 @@ export const FoodLog: React.FC = () => {
       console.log('💾 AI LOOKUP - Calling saveFoodLogs...');
       await saveFoodLogs(selectedDate, updatedItems);
       
-      setAddFoodOpen(false);
+      setIsSmartEntryOpen(false);
       reset();
       console.log('✅ AI LOOKUP - Successfully added AI analyzed food');
     } catch (err: any) {
@@ -865,11 +763,9 @@ export const FoodLog: React.FC = () => {
 
   const renderMealSection = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snacks', title: string) => {
     const mealItems = getMealItems(mealType);
-    
-    if (mealItems.length === 0) return null;
 
     return (
-      <Card sx={{ mb: 2 }}>
+      <Card sx={{ mb: 2 }} data-tour={mealType === 'breakfast' ? 'meal-section' : undefined}>
         <CardContent>
           <Box display="flex" alignItems="center" gap={1} mb={2}>
             {getMealIcon(mealType)}
@@ -977,52 +873,25 @@ export const FoodLog: React.FC = () => {
                             <IconButton
                               size="small"
                               onClick={() => startEditingQuantity(globalIndex, item.quantity, item.unit)}
+                              sx={{ p: 0.5 }}
                             >
                               <EditIcon fontSize="small" />
                             </IconButton>
                             
-                            {/* Quick portion adjustments - mobile optimized */}
-                            <Box display="flex" gap={0.5}>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => quickAdjustPortion(globalIndex, 0.5)}
-                                sx={{ 
-                                  minWidth: 'auto', 
-                                  px: { xs: 0.5, sm: 1 }, 
-                                  fontSize: { xs: '0.625rem', sm: '0.7rem' },
-                                  height: { xs: '24px', sm: '28px' }
-                                }}
-                              >
-                                ½×
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => quickAdjustPortion(globalIndex, 1.5)}
-                                sx={{ 
-                                  minWidth: 'auto', 
-                                  px: { xs: 0.5, sm: 1 }, 
-                                  fontSize: { xs: '0.625rem', sm: '0.7rem' },
-                                  height: { xs: '24px', sm: '28px' }
-                                }}
-                              >
-                                1½×
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => quickAdjustPortion(globalIndex, 2)}
-                                sx={{ 
-                                  minWidth: 'auto', 
-                                  px: { xs: 0.5, sm: 1 }, 
-                                  fontSize: { xs: '0.625rem', sm: '0.7rem' },
-                                  height: { xs: '24px', sm: '28px' }
-                                }}
-                              >
-                                2×
-                              </Button>
-                            </Box>
+                            <IconButton 
+                              size="small" 
+                              onClick={() => adjustQuantityStep(globalIndex, -0.5)} 
+                              sx={{ p: 0.5 }}
+                            >
+                              <RemoveCircleOutlineIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton 
+                              size="small" 
+                              onClick={() => adjustQuantityStep(globalIndex, 0.5)} 
+                              sx={{ p: 0.5 }}
+                            >
+                              <AddCircleOutlineIcon fontSize="small" />
+                            </IconButton>
                           </Box>
                         </Box>
                       )}
@@ -1237,406 +1106,56 @@ export const FoodLog: React.FC = () => {
     );
   };
 
+  const getDefaultMealTypeForSmartEntry = () => {
+    const currentHour = new Date().getHours();
+    if (currentHour < 10) return 'breakfast';
+    if (currentHour < 14) return 'lunch';
+    if (currentHour < 18) return 'dinner';
+    return 'snacks';
+  };
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box>
-        <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-          Fuel IQ Food Log
-        </Typography>
-        <Typography 
-          variant="body1" 
-          color="text.secondary" 
-          gutterBottom
-          sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' } }}
-        >
-          Intelligent nutrition tracking with personalized performance insights
-        </Typography>
+      <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
+          <Typography variant="h4" sx={{ fontSize: { xs: '1.8rem', sm: '2rem', md: '2.2rem' }, fontWeight: 'bold', color: 'primary.main' }}>
+            Food Log
+          </Typography>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />} 
+            onClick={() => setIsSmartEntryOpen(true)}
+            size="small"
+          >
+            Add Food
+          </Button>
+        </Box>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+        <DatePicker
+          label="Selected Date"
+          value={selectedDate}
+          onChange={handleDateChange}
+          sx={{ mb: 2, width: { xs: '100%', sm: 'auto' } }}
+        />
+
+        {/* Smart Food Entry Dialog */}
+        <SmartFoodEntry 
+          open={isSmartEntryOpen} 
+          onClose={() => setIsSmartEntryOpen(false)} 
+          onFoodsAdded={handleSmartFoodsAdded} 
+          selectedDate={selectedDate} 
+          defaultMealType={getDefaultMealTypeForSmartEntry()}
+        />
+
+        {/* Display Total Nutrition Summary using the new component */}
+        {foodItems.length > 0 && (
+          <CompactNutritionSummary 
+            totalNutrition={calculateTotalNutrition()} 
+            recommendedValues={getRecommendedDailyValues()} 
+          />
         )}
-
-        {loading && (
-          <Alert severity="info" sx={{ mb: 3 }}>
-            <Box display="flex" alignItems="center" gap={1}>
-              <CircularProgress size={20} />
-              Loading food logs...
-            </Box>
-          </Alert>
-        )}
-
-        {/* Header */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent sx={{ pt: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-              <DatePicker
-                label="Select Date"
-                value={selectedDate}
-                onChange={handleDateChange}
-                slotProps={{
-                  textField: {
-                    size: 'small',
-                    sx: { 
-                      width: { xs: '140px', sm: '180px' },
-                      mt: 1,
-                      '& .MuiInputBase-input': { 
-                        fontSize: { xs: '0.75rem', sm: '0.875rem' } 
-                      }
-                    }
-                  },
-                  popper: {
-                    placement: 'bottom-start',
-                    sx: {
-                      zIndex: 1300,
-                      '& .MuiPaper-root': {
-                        marginTop: 1
-                      }
-                    }
-                  }
-                }}
-              />
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={() => setAddFoodOpen(true)}
-                sx={{ 
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  px: { xs: 1, sm: 2 },
-                  py: { xs: 0.5, sm: 1 }
-                }}
-              >
-                {/* Show shorter text on mobile */}
-                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                  Add Food
-                </Box>
-                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
-                  Add
-                </Box>
-              </Button>
-            </Box>
-
-            {/* Daily Summary */}
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Daily Nutrition Summary
-              </Typography>
-              
-              {/* Basic Macros - Mobile Optimized */}
-              <Box mb={3}>
-                {/* Main Macros */}
-                <Box 
-                  display="flex" 
-                  flexWrap="wrap" 
-                  gap={{ xs: 0.5, sm: 1 }}
-                  mb={2}
-                  sx={{ 
-                    '& > *': { 
-                      flex: { xs: '1 1 calc(50% - 2px)', sm: '1 1 calc(25% - 6px)' },
-                      minWidth: { xs: '70px', sm: '80px' }
-                    }
-                  }}
-                >
-                  <Box textAlign="center" p={{ xs: 0.5, sm: 1 }} bgcolor="primary.50" borderRadius={1}>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
-                      Calories
-                    </Typography>
-                    <Typography variant="h6" color="primary.main" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      {Math.round(totalNutrition.calories)}
-                    </Typography>
-                  </Box>
-                  <Box textAlign="center" p={{ xs: 0.5, sm: 1 }} bgcolor="grey.50" borderRadius={1}>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
-                      Protein
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      {Math.round(totalNutrition.protein)}g
-                    </Typography>
-                  </Box>
-                  <Box textAlign="center" p={{ xs: 0.5, sm: 1 }} bgcolor="grey.50" borderRadius={1}>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
-                      Carbs
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      {Math.round(totalNutrition.carbs)}g
-                    </Typography>
-                  </Box>
-                  <Box textAlign="center" p={{ xs: 0.5, sm: 1 }} bgcolor="grey.50" borderRadius={1}>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>
-                      Fat
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      {Math.round(totalNutrition.fat)}g
-                    </Typography>
-                  </Box>
-                </Box>
-
-                {/* Key Micronutrients - More compact for mobile */}
-                <Box mb={2}>
-                  <Typography 
-                    variant="subtitle2" 
-                    gutterBottom
-                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                  >
-                    Key Nutrients (vs Daily Targets)
-                  </Typography>
-                  <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
-                    <Chip 
-                      label={`Na: ${Math.round(totalNutrition.sodium || 0)}mg`} 
-                      size="small"
-                      sx={{ 
-                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                        height: { xs: '20px', sm: '24px' },
-                        ...getNutrientColorStyle(totalNutrition.sodium, rdv.sodium, true)
-                      }}
-                    />
-                    <Chip 
-                      label={`K: ${Math.round(totalNutrition.potassium || 0)}mg`} 
-                      size="small"
-                      sx={{ 
-                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                        height: { xs: '20px', sm: '24px' },
-                        ...getNutrientColorStyle(totalNutrition.potassium, rdv.potassium)
-                      }}
-                    />
-                    <Chip 
-                      label={`Ca: ${Math.round(totalNutrition.calcium || 0)}mg`} 
-                      size="small"
-                      sx={{ 
-                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                        height: { xs: '20px', sm: '24px' },
-                        ...getNutrientColorStyle(totalNutrition.calcium, rdv.calcium)
-                      }}
-                    />
-                    <Chip 
-                      label={`Mg: ${Math.round(totalNutrition.magnesium || 0)}mg`} 
-                      size="small"
-                      sx={{ 
-                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                        height: { xs: '20px', sm: '24px' },
-                        ...getNutrientColorStyle(totalNutrition.magnesium, rdv.magnesium)
-                      }}
-                    />
-                    <Chip 
-                      label={`C: ${(totalNutrition.vitaminC || 0).toFixed(1)}mg`} 
-                      size="small"
-                      sx={{ 
-                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                        height: { xs: '20px', sm: '24px' },
-                        ...getNutrientColorStyle(totalNutrition.vitaminC, rdv.vitaminC)
-                      }}
-                    />
-                    <Chip 
-                      label={`D: ${(totalNutrition.vitaminD || 0).toFixed(1)}mcg`} 
-                      size="small"
-                      sx={{ 
-                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                        height: { xs: '20px', sm: '24px' },
-                        ...getNutrientColorStyle(totalNutrition.vitaminD, rdv.vitaminD)
-                      }}
-                    />
-                    <Chip 
-                      label={`Fe: ${(totalNutrition.iron || 0).toFixed(1)}mg`} 
-                      size="small"
-                      sx={{ 
-                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                        height: { xs: '20px', sm: '24px' },
-                        ...getNutrientColorStyle(totalNutrition.iron, rdv.iron)
-                      }}
-                    />
-                    <Chip 
-                      label={`B12: ${(totalNutrition.vitaminB12 || 0).toFixed(1)}mcg`} 
-                      size="small"
-                      sx={{ 
-                        fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                        height: { xs: '20px', sm: '24px' },
-                        ...getNutrientColorStyle(totalNutrition.vitaminB12, rdv.vitaminB12)
-                      }}
-                    />
-                  </Stack>
-                </Box>
-
-                {/* Fat Profile - Show only if there's significant fat content */}
-                {totalNutrition.fat > 5 && (
-                  <Box mb={2}>
-                    <Typography 
-                      variant="subtitle2" 
-                      gutterBottom
-                      sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                    >
-                      Fat Profile
-                    </Typography>
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
-                      {totalNutrition.saturatedFat > 0 && (
-                        <Chip 
-                          label={`Sat: ${(totalNutrition.saturatedFat || 0).toFixed(1)}g`} 
-                          size="small" 
-                          variant="outlined"
-                          sx={{ 
-                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                            height: { xs: '20px', sm: '24px' },
-                            ...getNutrientColorStyle(totalNutrition.saturatedFat, rdv.saturatedFat, true)
-                          }}
-                        />
-                      )}
-                      {totalNutrition.omega3 > 0 && (
-                        <Chip 
-                          label={`ω-3: ${Math.round(totalNutrition.omega3 || 0)}mg`} 
-                          size="small"
-                          sx={{ 
-                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                            height: { xs: '20px', sm: '24px' },
-                            ...getNutrientColorStyle(totalNutrition.omega3, rdv.omega3)
-                          }}
-                        />
-                      )}
-                      {totalNutrition.transFat > 0 && (
-                        <Chip 
-                          label={`Trans: ${(totalNutrition.transFat || 0).toFixed(1)}g`} 
-                          size="small"
-                          sx={{ 
-                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                            height: { xs: '20px', sm: '24px' },
-                            backgroundColor: 'var(--color-error)', 
-                            color: 'white',
-                            '&:hover': { backgroundColor: 'var(--color-error)' }
-                          }}
-                        />
-                      )}
-                      {totalNutrition.cholesterol > 0 && (
-                        <Chip 
-                          label={`Chol: ${Math.round(totalNutrition.cholesterol || 0)}mg`} 
-                          size="small"
-                          sx={{ 
-                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                            height: { xs: '20px', sm: '24px' },
-                            ...getNutrientColorStyle(totalNutrition.cholesterol, rdv.cholesterol, true)
-                          }}
-                        />
-                      )}
-                    </Stack>
-                  </Box>
-                )}
-
-                {/* B-Vitamins - Show only if present and significant */}
-                {(totalNutrition.thiamin > 0.1 || totalNutrition.riboflavin > 0.1 || totalNutrition.niacin > 1 || 
-                  totalNutrition.vitaminB6 > 0.1 || totalNutrition.folate > 10 || totalNutrition.vitaminB12 > 0.1) && (
-                  <Box mb={2}>
-                    <Typography 
-                      variant="subtitle2" 
-                      gutterBottom
-                      sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                    >
-                      B-Vitamins
-                    </Typography>
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
-                      {totalNutrition.thiamin > 0.1 && (
-                        <Chip 
-                          label={`B1: ${(totalNutrition.thiamin || 0).toFixed(1)}mg`} 
-                          size="small"
-                          sx={{ 
-                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                            height: { xs: '20px', sm: '24px' },
-                            ...getNutrientColorStyle(totalNutrition.thiamin, rdv.thiamin)
-                          }}
-                        />
-                      )}
-                      {totalNutrition.riboflavin > 0.1 && (
-                        <Chip 
-                          label={`B2: ${(totalNutrition.riboflavin || 0).toFixed(1)}mg`} 
-                          size="small"
-                          sx={{ 
-                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                            height: { xs: '20px', sm: '24px' },
-                            ...getNutrientColorStyle(totalNutrition.riboflavin, rdv.riboflavin)
-                          }}
-                        />
-                      )}
-                      {totalNutrition.niacin > 1 && (
-                        <Chip 
-                          label={`B3: ${(totalNutrition.niacin || 0).toFixed(1)}mg`} 
-                          size="small"
-                          sx={{ 
-                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                            height: { xs: '20px', sm: '24px' },
-                            ...getNutrientColorStyle(totalNutrition.niacin, rdv.niacin)
-                          }}
-                        />
-                      )}
-                      {totalNutrition.folate > 10 && (
-                        <Chip 
-                          label={`Folate: ${Math.round(totalNutrition.folate || 0)}mcg`} 
-                          size="small"
-                          sx={{ 
-                            fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                            height: { xs: '20px', sm: '24px' },
-                            ...getNutrientColorStyle(totalNutrition.folate, rdv.folate)
-                          }}
-                        />
-                      )}
-                    </Stack>
-                  </Box>
-                )}
-
-                {/* Color Legend - Simplified */}
-                <Box mt={2} p={{ xs: 1, sm: 1.5 }} bgcolor="grey.50" borderRadius={1}>
-                  <Typography 
-                    variant="caption" 
-                    display="block" 
-                    gutterBottom 
-                    fontWeight="bold"
-                    sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}
-                  >
-                    Color Guide:
-                  </Typography>
-                  <Stack direction="row" spacing={{ xs: 1, sm: 2 }} flexWrap="wrap" gap={1}>
-                    <Box display="flex" alignItems="center" gap={0.5}>
-                      <Chip 
-                        label="Good" 
-                        size="small" 
-                        sx={{ 
-                          fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                          height: { xs: '16px', sm: '20px' },
-                          backgroundColor: 'var(--color-primary-green)', 
-                          color: 'white'
-                        }} 
-                      />
-                      <Typography variant="caption" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>≥100%</Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center" gap={0.5}>
-                      <Chip 
-                        label="OK" 
-                        size="small" 
-                        sx={{ 
-                          fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                          height: { xs: '16px', sm: '20px' },
-                          backgroundColor: 'var(--color-accent-yellow)', 
-                          color: 'var(--color-text-primary)'
-                        }} 
-                      />
-                      <Typography variant="caption" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>70-99%</Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center" gap={0.5}>
-                      <Chip 
-                        label="Low" 
-                        size="small" 
-                        sx={{ 
-                          fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
-                          height: { xs: '16px', sm: '20px' },
-                          backgroundColor: 'var(--color-error)', 
-                          color: 'white'
-                        }} 
-                      />
-                      <Typography variant="caption" sx={{ fontSize: { xs: '0.625rem', sm: '0.75rem' } }}>&lt;70%</Typography>
-                    </Box>
-                  </Stack>
-                </Box>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
 
         {/* Meal Sections */}
         {renderMealSection('breakfast', 'Breakfast')}
@@ -1659,7 +1178,7 @@ export const FoodLog: React.FC = () => {
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
-                  onClick={() => setAddFoodOpen(true)}
+                  onClick={() => setIsSmartEntryOpen(true)}
                 >
                   Add Your First Food
                 </Button>
@@ -1667,15 +1186,6 @@ export const FoodLog: React.FC = () => {
             </CardContent>
           </Card>
         )}
-
-        {/* Smart Food Entry */}
-        <SmartFoodEntry
-          open={addFoodOpen}
-          onClose={() => setAddFoodOpen(false)}
-          onFoodsAdded={handleSmartFoodsAdded}
-          defaultMealType="breakfast"
-          data-tour="smart-food-entry"
-        />
       </Box>
     </LocalizationProvider>
   );

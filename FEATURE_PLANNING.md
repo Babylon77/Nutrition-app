@@ -266,7 +266,20 @@
 
 **Trial Strategy**: 14-day Premium trial → downgrade to free tier (not hard paywall)
 
-## Recent Fixes & Updates ✅
+## Recent Debugging & Fixes (Post-Sprint 2.5) 🛠️
+
+### v1.0.4 - Render Stability & Data Integrity (06/01/2025)
+- **Fixed: Production Session Store**: Resolved `connect.session() MemoryStore` warning by integrating `connect-mongo` for persistent MongoDB session storage on Render.
+- **Fixed: Food Queue Processing on Render**:
+    - Addressed race condition where food queue appeared empty on backend by initially adding explicit `req.session.save()`.
+    - Revised to a more robust stateless approach: frontend now sends the entire current queue to the backend `process_queue` endpoint, eliminating reliance on session state for this volatile data.
+- **Fixed: Render Build Fallthrough Error**: Corrected TypeScript error `TS7029: Fallthrough case in switch` in `backend/src/routes/food.ts` by adding a `break;` statement.
+- **Addressed: API Rate Limiting on Render**:
+    - Temporarily increased backend rate limits and frontend debounce time for `SmartFoodEntry` search.
+    - Implemented client-side caching for personal food search results in `SmartFoodEntry.tsx` as a long-term optimization to reduce API calls.
+- **Fixed: Calorie Meter & Food Log Date Discrepancies (Local & Render)**: Ensured consistent `YYYY-MM-DD` string handling for `FoodLog.date` in backend queries (`/api/food/summary`, `/api/food/logs/:date`) and storage, resolving issues where "today's" foods weren't correctly reflected due to timezone/date object mismatches.
+- **Fixed: Food Logs Not Appearing (DB Date Type Mismatch)**: Corrected backend `POST` and `PUT` routes for `/api/food/logs/:date` to save dates as `YYYY-MM-DD` strings, matching query logic and fixing data retrieval.
+- **Fixed: Local Backend Startup Error (`targetDate` not found)**: Resolved TypeScript error in `backend/src/routes/food.ts` by correcting `targetDate` references used for response formatting to use `new Date(dateString)`, ensuring dev server stability.
 
 ### v1.0.3 - Timezone Bug Fix (5/29/2025)
 - **Fixed**: Date storage timezone issue where food logged in user's local time was appearing on wrong date

@@ -447,29 +447,30 @@ export const TutorialProvider: React.FC<TutorialSystemProps> = ({ children }) =>
 export const TutorialHelpButton: React.FC<{
   tutorialType: string;
   position?: { bottom?: number; right?: number };
-}> = ({ tutorialType, position = { bottom: 24, right: 24 } }) => {
-  const { startTutorial } = useTutorial();
-  const isCompleted = localStorage.getItem(`tutorial-${tutorialType}-completed`);
+}> = ({ tutorialType, position = { bottom: 80, right: 24 } }) => {
+  // const { startTutorial } = useTutorial();
+  // const isCompleted = localStorage.getItem(`tutorial-${tutorialType}-completed`);
 
-  return (
-    <Tooltip title={`${isCompleted ? 'Replay' : 'Start'} tutorial`}>
-      <Fab
-        size="small"
-        color="primary"
-        onClick={() => startTutorial(tutorialType)}
-        sx={{
-          position: 'fixed',
-          bottom: position.bottom,
-          right: position.right,
-          zIndex: 1000,
-          opacity: 0.8,
-          '&:hover': {
-            opacity: 1,
-          },
-        }}
-      >
-        <HelpOutlineIcon />
-      </Fab>
-    </Tooltip>
-  );
+  // return (
+  //   <Tooltip title={`${isCompleted ? 'Replay' : 'Start'} tutorial`}>
+  //     <Fab
+  //       size="small"
+  //       color="primary"
+  //       onClick={() => startTutorial(tutorialType)}
+  //       sx={{
+  //         position: 'fixed',
+  //         bottom: position.bottom,
+  //         right: position.right,
+  //         zIndex: 1000,
+  //         opacity: 0.8,
+  //         '&:hover': {
+  //           opacity: 1,
+  //         },
+  //       }}
+  //     >
+  //       <HelpOutlineIcon />
+  //     </Fab>
+  //   </Tooltip>
+  // );
+  return null; // Effectively hides the button
 }; 

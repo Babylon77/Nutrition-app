@@ -1,7 +1,8 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { ThemeProvider, createTheme, CssBaseline, Box, useMediaQuery, useTheme, Typography, AppBar, Button } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
@@ -14,8 +15,7 @@ import { Bloodwork } from './pages/Bloodwork';
 import AnalysisPage from './pages/Analysis';
 import { Profile } from './pages/Profile';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { TutorialProvider, TutorialHelpButton } from './components/TutorialSystem';
-import { Box, Typography, AppBar, Button } from '@mui/material';
+import { TutorialProvider } from './components/TutorialSystem';
 import LandingPage from './pages/LandingPage';
 
 // Import new design system
@@ -108,66 +108,67 @@ const theme = createTheme({
   },
 });
 
-function AppContent() {
-  const { user } = useAuth();
-  
+const MainRoutes = () => {
+  const auth = useAuth();
+  const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
-    <Router>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={!user ? <LandingPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="/landing" element={<LandingPage />} />
-        <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" replace />} />
-        <Route path="/signup" element={!user ? <Register /> : <Navigate to="/dashboard" replace />} />
-        
-        {/* Protected routes */}
-        <Route path="/*" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route path="dashboard" element={
-            <>
-              <Dashboard />
-              <TutorialHelpButton tutorialType="firstTime" />
-            </>
-          } />
-          <Route path="food-log" element={
-            <>
-              <FoodLog />
-              <TutorialHelpButton tutorialType="smartEntry" />
-            </>
-          } />
-          <Route path="personal-foods" element={<PersonalFoods />} />
-          <Route path="supplements" element={<SupplementsNew />} />
-          <Route path="bloodwork" element={
-            <>
-              <Bloodwork />
-              <TutorialHelpButton tutorialType="bloodwork" />
-            </>
-          } />
-          <Route path="analysis" element={
-            <>
-              <AnalysisPage />
-              <TutorialHelpButton tutorialType="analytics" />
-            </>
-          } />
-          <Route path="profile" element={<Profile />} />
-          <Route path="demo" element={
-            <Box sx={{ p: 3 }}>
-              <Typography variant="h4" sx={{ mb: 3 }}>
-                Sprint 2.5: Modern UI Components Demo
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 2 }}>
-                The modern design system components (CalorieGauge, MacroProgressBar, BottomNavigation) 
-                have been implemented and are being used throughout the app.
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Visit /dashboard to see the new design system in action with the bottom navigation on mobile.
-              </Typography>
-            </Box>
-          } />
-        </Route>
-      </Routes>
-    </Router>
+    <Routes>
+      {/* Public routes */}
+      <Route path="/" element={!auth.user ? <LandingPage /> : <Navigate to="/dashboard" replace />} />
+      <Route path="/landing" element={<LandingPage />} />
+      <Route path="/login" element={!auth.user ? <Login /> : <Navigate to="/dashboard" replace />} />
+      <Route path="/signup" element={!auth.user ? <Register /> : <Navigate to="/dashboard" replace />} />
+      
+      {/* Protected routes */}
+      <Route path="/*" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+        <Route path="dashboard" element={
+          <>
+            <Dashboard />
+            {/* <TutorialHelpButton tutorialType="firstTime" /> */}
+          </>
+        } />
+        <Route path="food-log" element={
+          <>
+            <FoodLog />
+            {/* <TutorialHelpButton tutorialType="smartEntry" /> */}
+          </>
+        } />
+        <Route path="personal-foods" element={<PersonalFoods />} />
+        <Route path="supplements" element={<SupplementsNew />} />
+        <Route path="bloodwork" element={
+          <>
+            <Bloodwork />
+            {/* <TutorialHelpButton tutorialType="bloodwork" /> */}
+          </>
+        } />
+        <Route path="analysis" element={
+          <>
+            <AnalysisPage />
+            {/* <TutorialHelpButton tutorialType="analytics" /> */}
+          </>
+        } />
+        <Route path="profile" element={<Profile />} />
+        <Route path="demo" element={
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h4" sx={{ mb: 3 }}>
+              Sprint 2.5: Modern UI Components Demo
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              The modern design system components (CalorieGauge, MacroProgressBar, BottomNavigation) 
+              have been implemented and are being used throughout the app.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Visit /dashboard to see the new design system in action with the bottom navigation on mobile.
+            </Typography>
+          </Box>
+        } />
+      </Route>
+    </Routes>
   );
-}
+};
 
 function App() {
   return (
@@ -175,7 +176,9 @@ function App() {
       <CssBaseline />
       <AuthProvider>
         <TutorialProvider>
-          <AppContent />
+          <Router>
+            <MainRoutes />
+          </Router>
         </TutorialProvider>
       </AuthProvider>
     </ThemeProvider>

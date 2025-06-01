@@ -16,7 +16,9 @@ import {
   BookOpenIcon as BookOpenSolid,
   BeakerIcon as BeakerSolid, 
   HeartIcon as HeartSolid,
-  UserCircleIcon as UserSolid 
+  UserCircleIcon as UserSolid,
+  ChartBarIcon as ChartBarSolid,
+  PlusIcon as PlusSolid
 } from '@heroicons/react/24/solid';
 import './BottomNavigation.css';
 
@@ -32,7 +34,7 @@ interface NavigationItem {
 const navigationItems: NavigationItem[] = [
   {
     id: 'dashboard',
-    label: 'Dashboard',
+    label: 'Dash',
     path: '/',
     icon: HomeIcon,
     solidIcon: HomeSolid,
@@ -56,7 +58,7 @@ const navigationItems: NavigationItem[] = [
   },
   {
     id: 'supplements',
-    label: 'Supplements',
+    label: 'Supp.',
     path: '/supplements',
     icon: BeakerIcon,
     solidIcon: BeakerSolid,
@@ -74,8 +76,8 @@ const navigationItems: NavigationItem[] = [
     id: 'analysis',
     label: 'Analysis',
     path: '/analysis',
-    icon: BeakerIcon,
-    solidIcon: BeakerSolid,
+    icon: ChartBarIcon,
+    solidIcon: ChartBarSolid,
     color: 'var(--color-analysis)'
   },
   {
@@ -140,7 +142,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ onQuickAdd }) => {
               <span className="nav-label">{item.label}</span>
               
               {/* Quick Add FAB positioned after Food Log item */}
-              {index === 1 && (
+              {/* {index === 1 && ( // Removing the FAB
                 <button
                   className="quick-add-fab"
                   onClick={handleQuickAdd}
@@ -148,7 +150,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ onQuickAdd }) => {
                 >
                   <PlusIcon className="fab-icon" />
                 </button>
-              )}
+              )} */}
             </button>
           );
         })}

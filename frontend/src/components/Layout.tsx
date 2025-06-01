@@ -329,7 +329,7 @@ export const Layout: React.FC = () => {
           marginTop: isMobile ? '56px' : '64px',
           backgroundColor: 'var(--color-bg-main)',
           minHeight: 'calc(100vh - (isMobile ? 56px : 64px))',
-          pb: isMobile ? '80px' : 3,
+          pb: isMobile ? '100px' : 3,
         }}
       >
         <Outlet />
