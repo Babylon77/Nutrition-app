@@ -225,6 +225,7 @@ router.get('/:foodId/nutrition', protect, asyncHandler(async (req, res) => {
 // @access  Private
 router.get('/logs/:date', protect, asyncHandler(async (req, res) => {
   const { date } = req.params; // date is expected to be a 'YYYY-MM-DD' string
+  console.log('Backend /api/food/logs/:date - Received date:', date, 'User ID:', req.user.id);
   
   // No need to convert to Date objects if FoodLog.date is a string 'YYYY-MM-DD'
   // const targetDate = new Date(date);
@@ -237,6 +238,7 @@ router.get('/logs/:date', protect, asyncHandler(async (req, res) => {
     userId: req.user.id,
     date: date // Direct string comparison
   });
+  console.log('Backend - Found foodLogs count:', foodLogs.length);
 
   // Group by meal type
   const meals = {
@@ -298,6 +300,7 @@ router.get('/logs/:date', protect, asyncHandler(async (req, res) => {
     createdAt: foodLogs[0]?.createdAt || new Date(),
     updatedAt: new Date()
   };
+  console.log('Backend - foodLogEntry being sent:', JSON.stringify(foodLogEntry, null, 2));
 
   res.json({
     success: true,

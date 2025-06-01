@@ -255,64 +255,25 @@ export const FoodLog: React.FC = () => {
 
       const result = await response.json();
       
-      // Convert backend format to frontend format
-      const loadedItems: EnhancedFoodItem[] = [];
-      
-      console.log('📥 Loading food logs from backend:', result.data);
-      
-      // Process each meal type
-      ['breakfast', 'lunch', 'dinner', 'snacks'].forEach(mealType => {
-        const mealItems = result.data.meals[mealType] || [];
-        mealItems.forEach((item: any) => {
-          loadedItems.push({
-            name: item.food.name,
-            quantity: item.quantity,
-            unit: item.unit,
-            mealType: mealType as 'breakfast' | 'lunch' | 'dinner' | 'snacks',
-            nutrition: {
-              calories: item.nutrition.calories || 0,
-              protein: item.nutrition.protein || 0,
-              carbs: item.nutrition.carbs || 0,
-              fat: item.nutrition.fat || 0,
-              fiber: item.nutrition.fiber || 0,
-              sugar: item.nutrition.sugar || 0,
-              saturatedFat: item.nutrition.saturatedFat || 0,
-              monounsaturatedFat: item.nutrition.monounsaturatedFat || 0,
-              polyunsaturatedFat: item.nutrition.polyunsaturatedFat || 0,
-              transFat: item.nutrition.transFat || 0,
-              omega3: item.nutrition.omega3 || 0,
-              omega6: item.nutrition.omega6 || 0,
-              sodium: item.nutrition.sodium || 0,
-              potassium: item.nutrition.potassium || 0,
-              calcium: item.nutrition.calcium || 0,
-              magnesium: item.nutrition.magnesium || 0,
-              phosphorus: item.nutrition.phosphorus || 0,
-              iron: item.nutrition.iron || 0,
-              zinc: item.nutrition.zinc || 0,
-              selenium: item.nutrition.selenium || 0,
-              vitaminA: item.nutrition.vitaminA || 0,
-              vitaminC: item.nutrition.vitaminC || 0,
-              vitaminD: item.nutrition.vitaminD || 0,
-              vitaminE: item.nutrition.vitaminE || 0,
-              vitaminK: item.nutrition.vitaminK || 0,
-              thiamin: item.nutrition.thiamin || 0,
-              riboflavin: item.nutrition.riboflavin || 0,
-              niacin: item.nutrition.niacin || 0,
-              vitaminB6: item.nutrition.vitaminB6 || 0,
-              folate: item.nutrition.folate || 0,
-              vitaminB12: item.nutrition.vitaminB12 || 0,
-              biotin: item.nutrition.biotin || 0,
-              pantothenicAcid: item.nutrition.pantothenicAcid || 0,
-              cholesterol: item.nutrition.cholesterol || 0,
-              creatine: item.nutrition.creatine || 0,
-            },
-            confidence: item.confidence || 0.8,
-            weightConversion: item.weightConversion || undefined,
+      if (result.success && result.data && result.data.meals) {
+        const allFoods: EnhancedFoodItem[] = [];
+        Object.keys(result.data.meals).forEach(mealKey => {
+          result.data.meals[mealKey].forEach((item: any) => {
+            allFoods.push({
+              name: item.food.name,
+              quantity: item.quantity,
+              unit: item.unit,
+              mealType: mealKey as any, 
+              nutrition: item.nutrition,
+              confidence: item.confidence,
+              weightConversion: item.weightConversion
+            });
           });
         });
-      });
-      
-      setFoodItems(loadedItems);
+        setFoodItems(allFoods);
+      } else {
+        setFoodItems([]);
+      }
     } catch (err: any) {
       console.error('Failed to load food logs:', err);
       setError(err.message || 'Failed to load food logs');
