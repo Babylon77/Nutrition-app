@@ -36,6 +36,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
@@ -54,6 +55,35 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const handleResize = () => {
+      if (window.visualViewport) {
+        const heightDiff = window.innerHeight - window.visualViewport.height;
+        setKeyboardHeight(heightDiff > 100 ? heightDiff : 0);
+      } else {
+        // Fallback for browsers without visualViewport support
+        const heightDiff = window.screen.height - window.innerHeight;
+        setKeyboardHeight(heightDiff > 200 ? heightDiff * 0.6 : 0);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+    } else {
+      window.addEventListener('resize', handleResize);
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+      } else {
+        window.removeEventListener('resize', handleResize);
+      }
+    };
+  }, [isMobile]);
 
   const handleOpen = () => {
     setOpen(true);
@@ -160,8 +190,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
   const handleInputFocus = () => {
     if (isMobile) {
       setTimeout(() => {
-        inputContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      }, 300);
+        if (inputContainerRef.current) {
+          inputContainerRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'nearest',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
     }
   };
 
@@ -221,7 +257,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
         fullScreen={isMobile}
         PaperProps={{
           sx: {
-            height: isMobile ? '100vh' : '600px',
+            height: isMobile ? `calc(100vh - ${keyboardHeight}px)` : '600px',
             backgroundColor: '#f8f9fa',
             boxShadow: 'var(--shadow-xl)',
           },
@@ -413,6 +449,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
               backgroundColor: '#ffffff',
               borderTop: '1px solid var(--color-border-light)',
               boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.1)',
+              paddingBottom: isMobile && keyboardHeight > 0 ? 3 : 2,
             }}
           >
             <Stack direction="row" spacing={1} alignItems="flex-end">
