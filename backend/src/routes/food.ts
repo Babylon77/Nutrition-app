@@ -937,21 +937,35 @@ router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
         );
       }
 
-      return res.json({
-        success: true,
-        action: 'remove_from_queue',
-        data: { queue: req.session.foodQueue || [] }
+      req.session.save((err) => {
+        if (err) {
+          console.error('Failed to save session after removing from queue:', err);
+          return res.status(500).json({ success: false, message: 'Failed to update food queue' });
+        }
+        return res.json({
+          success: true,
+          action: 'remove_from_queue',
+          data: { queue: req.session.foodQueue || [] }
+        });
       });
+      break;
 
     case 'clear_queue':
       // Clear entire queue
       req.session.foodQueue = [];
 
-      return res.json({
-        success: true,
-        action: 'clear_queue',
-        data: { queue: [] }
+      req.session.save((err) => {
+        if (err) {
+          console.error('Failed to save session after clearing queue:', err);
+          return res.status(500).json({ success: false, message: 'Failed to clear food queue' });
+        }
+        return res.json({
+          success: true,
+          action: 'clear_queue',
+          data: { queue: [] }
+        });
       });
+      break;
 
     case 'process_queue':
       // Process all items in queue

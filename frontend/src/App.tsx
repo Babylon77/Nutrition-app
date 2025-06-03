@@ -114,60 +114,60 @@ const MainRoutes = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
+  
   return (
-    <Routes>
-      {/* Public routes */}
+      <Routes>
+        {/* Public routes */}
       <Route path="/" element={!auth.user ? <LandingPage /> : <Navigate to="/dashboard" replace />} />
-      <Route path="/landing" element={<LandingPage />} />
+        <Route path="/landing" element={<LandingPage />} />
       <Route path="/login" element={!auth.user ? <Login /> : <Navigate to="/dashboard" replace />} />
       <Route path="/signup" element={!auth.user ? <Register /> : <Navigate to="/dashboard" replace />} />
-      
-      {/* Protected routes */}
-      <Route path="/*" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route path="dashboard" element={
-          <>
-            <Dashboard />
+        
+        {/* Protected routes */}
+        <Route path="/*" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route path="dashboard" element={
+            <>
+              <Dashboard />
             {/* <TutorialHelpButton tutorialType="firstTime" /> */}
-          </>
-        } />
-        <Route path="food-log" element={
-          <>
-            <FoodLog />
+            </>
+          } />
+          <Route path="food-log" element={
+            <>
+              <FoodLog />
             {/* <TutorialHelpButton tutorialType="smartEntry" /> */}
-          </>
-        } />
-        <Route path="personal-foods" element={<PersonalFoods />} />
-        <Route path="supplements" element={<SupplementsNew />} />
-        <Route path="bloodwork" element={
-          <>
-            <Bloodwork />
+            </>
+          } />
+          <Route path="personal-foods" element={<PersonalFoods />} />
+          <Route path="supplements" element={<SupplementsNew />} />
+          <Route path="bloodwork" element={
+            <>
+              <Bloodwork />
             {/* <TutorialHelpButton tutorialType="bloodwork" /> */}
-          </>
-        } />
-        <Route path="analysis" element={
-          <>
-            <AnalysisPage />
+            </>
+          } />
+          <Route path="analysis" element={
+            <>
+              <AnalysisPage />
             {/* <TutorialHelpButton tutorialType="analytics" /> */}
-          </>
-        } />
-        <Route path="profile" element={<Profile />} />
-        <Route path="demo" element={
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h4" sx={{ mb: 3 }}>
-              Sprint 2.5: Modern UI Components Demo
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              The modern design system components (CalorieGauge, MacroProgressBar, BottomNavigation) 
-              have been implemented and are being used throughout the app.
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Visit /dashboard to see the new design system in action with the bottom navigation on mobile.
-            </Typography>
-          </Box>
-        } />
-      </Route>
-    </Routes>
+            </>
+          } />
+          <Route path="profile" element={<Profile />} />
+          <Route path="demo" element={
+            <Box sx={{ p: 3 }}>
+              <Typography variant="h4" sx={{ mb: 3 }}>
+                Sprint 2.5: Modern UI Components Demo
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                The modern design system components (CalorieGauge, MacroProgressBar, BottomNavigation) 
+                have been implemented and are being used throughout the app.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Visit /dashboard to see the new design system in action with the bottom navigation on mobile.
+              </Typography>
+            </Box>
+          } />
+        </Route>
+      </Routes>
   );
 };
 

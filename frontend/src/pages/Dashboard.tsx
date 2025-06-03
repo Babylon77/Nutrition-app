@@ -232,9 +232,9 @@ export const Dashboard: React.FC = () => {
                   {/* Calorie Gauge and Goal */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
                     <Box sx={{ width: '100%', maxWidth: { xs: '240px', sm: '300px', md: '380px' }, mb: 0.5, mx: 'auto' }}> {/* Increased maxWidth for larger gauge */}
-                        <CalorieGauge
-                          current={nutritionSummary.totalCalories}
-                          goal={getSuggestedCalories() || nutritionSummary.goalCalories || 2000}
+                    <CalorieGauge
+                      current={nutritionSummary.totalCalories}
+                      goal={getSuggestedCalories() || nutritionSummary.goalCalories || 2000}
                           size="lg"
                           showLabels={false} // Hide internal labels
                         />
@@ -358,7 +358,7 @@ export const Dashboard: React.FC = () => {
                               secondary={`${value.value} ${value.unit}`}
                               primaryTypographyProps={{ variant: 'body2' }}
                               secondaryTypographyProps={{ variant: 'caption' }}
-                            />
+                        />
                           </ListItem>
                         ))}
                       </List>

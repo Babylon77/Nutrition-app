@@ -381,15 +381,15 @@ const PersonalFoods: React.FC = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
         <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
           My Personal Foods
-        </Typography>
+      </Typography>
         <Box sx={{display: 'flex', gap: 1}}>
-            <Button 
-                variant="outlined" 
+          <Button
+            variant="outlined"
                 startIcon={<ImportIcon />} 
-                onClick={() => setImportDialogOpen(true)}
-            >
-                Import from Logs
-            </Button>
+            onClick={() => setImportDialogOpen(true)}
+          >
+              Import from Logs
+          </Button>
             <Tooltip title="Add New Personal Food">
                 <Fab 
                   color="primary" 
@@ -407,84 +407,84 @@ const PersonalFoods: React.FC = () => {
 
       <Paper elevation={1} sx={{ p: 1.5, mb: 2, borderRadius: 'var(--border-radius-lg)' }}>
         <Box sx={{ width: '100%' }}>
-          <TextField
-            fullWidth
+            <TextField
+              fullWidth
             variant="outlined"
             placeholder="Search my foods..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
               sx: { borderRadius: 'var(--border-radius-md)' }
             }}
           />
         </Box>
       </Paper>
 
-      <Tabs 
-        value={currentTab} 
+        <Tabs
+          value={currentTab}
         onChange={(e, newValue) => setCurrentTab(newValue)} 
         centered 
         variant="fullWidth" 
         sx={{mb:2}}
-      >
-        <Tab 
+        >
+          <Tab 
           label="Popular" 
           icon={<StarIcon />} 
           iconPosition="start" 
           sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, minWidth: {xs: 'auto'} }}
-        />
-        <Tab 
-          label="Recent" 
+          />
+          <Tab 
+            label="Recent" 
           icon={<AccessTimeIcon />} 
           iconPosition="start" 
           sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, minWidth: {xs: 'auto'} }}
-        />
-        <Tab 
+          />
+          <Tab 
           label="Favorites" 
           icon={<FavoriteIcon />} 
           iconPosition="start" 
           sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, minWidth: {xs: 'auto'} }}
-        />
-      </Tabs>
+          />
+        </Tabs>
 
-      <TabPanel value={currentTab} index={0}>
-        <FoodList 
-            foods={personalFoods}
+        <TabPanel value={currentTab} index={0}>
+          <FoodList 
+            foods={personalFoods} 
             loading={loading}
             onEdit={openEditDialog}
             onDelete={handleDeleteFood}
             onToggleFavorite={handleToggleFavorite}
             getCategoryColor={getCategoryColor}
             formatLastUsed={formatLastUsed}
-        />
-      </TabPanel>
-      <TabPanel value={currentTab} index={1}>
-        <FoodList 
-            foods={personalFoods}
+          />
+        </TabPanel>
+        <TabPanel value={currentTab} index={1}>
+          <FoodList 
+            foods={personalFoods} 
             loading={loading}
             onEdit={openEditDialog}
             onDelete={handleDeleteFood}
             onToggleFavorite={handleToggleFavorite}
             getCategoryColor={getCategoryColor}
             formatLastUsed={formatLastUsed}
-        />
-      </TabPanel>
-      <TabPanel value={currentTab} index={2}>
-        <FoodList 
-            foods={personalFoods}
+          />
+        </TabPanel>
+        <TabPanel value={currentTab} index={2}>
+          <FoodList 
+            foods={personalFoods} 
             loading={loading}
             onEdit={openEditDialog}
             onDelete={handleDeleteFood}
             onToggleFavorite={handleToggleFavorite}
             getCategoryColor={getCategoryColor}
             formatLastUsed={formatLastUsed}
-        />
-      </TabPanel>
+          />
+        </TabPanel>
 
       <Dialog open={createDialogOpen || editDialogOpen} onClose={() => { setCreateDialogOpen(false); setEditDialogOpen(false); setSelectedFood(null); resetForm(); }} maxWidth="sm" fullWidth>
         <DialogTitle>{selectedFood ? 'Edit' : 'Create'} Personal Food</DialogTitle>

@@ -263,16 +263,16 @@ export const FoodLog: React.FC = () => {
         Object.keys(result.data.meals).forEach(mealKey => {
           result.data.meals[mealKey].forEach((item: any) => {
             allFoods.push({
-              name: item.food.name,
-              quantity: item.quantity,
-              unit: item.unit,
+            name: item.food.name,
+            quantity: item.quantity,
+            unit: item.unit,
               mealType: mealKey as any, 
               nutrition: item.nutrition,
               confidence: item.confidence,
               weightConversion: item.weightConversion
-            });
           });
         });
+      });
         setFoodItems(allFoods);
       } else {
         setFoodItems([]);
@@ -467,8 +467,8 @@ export const FoodLog: React.FC = () => {
 
     if (isNaN(quantityToSave) || quantityToSave <= 0) {
       setError('Invalid quantity.');
-      return;
-    }
+        return;
+      }
 
     // Create a deep copy of the item and its nutrition to avoid direct state mutation issues
     const updatedItem = JSON.parse(JSON.stringify(itemToUpdate));
@@ -486,12 +486,12 @@ export const FoodLog: React.FC = () => {
         }
       }
     }
-    
-    const updatedItems = [...foodItems];
-    updatedItems[index] = updatedItem;
+
+      const updatedItems = [...foodItems];
+      updatedItems[index] = updatedItem;
 
     setFoodItems(updatedItems);
-    await saveFoodLogs(selectedDate, updatedItems);
+      await saveFoodLogs(selectedDate, updatedItems);
     setEditingItemIndex(null); // Exit edit mode
   };
   
@@ -879,14 +879,14 @@ export const FoodLog: React.FC = () => {
                             </IconButton>
                             
                             <IconButton 
-                              size="small" 
+                                size="small"
                               onClick={() => adjustQuantityStep(globalIndex, -0.5)} 
                               sx={{ p: 0.5 }}
                             >
                               <RemoveCircleOutlineIcon fontSize="small" />
                             </IconButton>
                             <IconButton 
-                              size="small" 
+                                size="small"
                               onClick={() => adjustQuantityStep(globalIndex, 0.5)} 
                               sx={{ p: 0.5 }}
                             >
@@ -1120,16 +1120,16 @@ export const FoodLog: React.FC = () => {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
           <Typography variant="h4" sx={{ fontSize: { xs: '1.8rem', sm: '2rem', md: '2.2rem' }, fontWeight: 'bold', color: 'primary.main' }}>
             Food Log
-          </Typography>
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />} 
+        </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
             onClick={() => setIsSmartEntryOpen(true)}
             size="small"
           >
-            Add Food
-          </Button>
-        </Box>
+                  Add Food
+              </Button>
+            </Box>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
