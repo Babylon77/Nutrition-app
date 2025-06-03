@@ -39,6 +39,15 @@ interface PersonalFood {
   timesUsed: number;
 }
 
+// For storing specific subset of personal food data within a queued item
+interface QueuedPersonalFoodData {
+  _id: string;
+  name: string;
+  nutrition: any;
+  defaultQuantity: number;
+  defaultUnit: string;
+}
+
 interface QueuedFood {
   id: string;
   name: string;
@@ -47,6 +56,7 @@ interface QueuedFood {
   mealType: string;
   isPersonalFood: boolean;
   personalFoodId?: string;
+  personalFoodData?: QueuedPersonalFoodData;
   status: 'ready' | 'needs_analysis';
 }
 
@@ -78,6 +88,58 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
   const debouncedInput = useDebounce(currentInput, 750);
   const searchCache = React.useRef<{ [key: string]: PersonalFood[] }>({});
 
+  // Prepare suggestion list content with logging
+  let suggestionListContent = null;
+  if (personalSuggestions && personalSuggestions.length > 0) {
+    const ids = personalSuggestions.map(f => f && f.id !== undefined && f.id !== null ? f.id : 'MISSING_FOOD_ID');
+    console.log('[SmartFoodEntry] Rendering personalSuggestions with keys (using food.id):', ids);
+    
+    const uniqueIds = new Set(ids);
+    if (uniqueIds.size !== ids.length) {
+      console.error('[SmartFoodEntry] DUPLICATE food.id values found in personalSuggestions. All IDs:', ids);
+    }
+    if (ids.includes('MISSING_FOOD_ID')) {
+      console.warn('[SmartFoodEntry] UNDEFINED or NULL food.id values present in personalSuggestions. All IDs:', ids);
+    }
+
+    suggestionListContent = personalSuggestions.map((food) => {
+      if (!food || typeof food.id === 'undefined' || food.id === null) {
+        return null; // Skip rendering this item
+      }
+      return (
+        <Box key={food.id}>
+          <Card variant="outlined" sx={{ bgcolor: 'success.50', borderColor: 'success.200' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography variant="body1" fontWeight="bold">
+                    {food.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" component="div">
+                    {food.defaultQuantity} {food.defaultUnit} • {food.nutrition?.calories || 0} cal
+                    {food.timesUsed > 1 && ` • Used ${food.timesUsed} times`}
+                    <Chip label="No AI needed" size="small" color="success" sx={{ ml: 1 }} />
+                  </Typography>
+                </Box>
+                <Box display="flex" gap={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<QueueIcon />}
+                    onClick={() => addToQueue(true, food.id, food)}
+                    data-tour="add-to-queue"
+                  >
+                    Add to Queue
+                  </Button>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+      );
+    });
+  }
+
   // Search personal foods as user types
   useEffect(() => {
     if (debouncedInput.trim() && debouncedInput.length >= 2) {
@@ -87,11 +149,9 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
     }
   }, [debouncedInput]);
 
-  // Load initial queue state
+  // Remove this useEffect as loadQueue is removed.
   useEffect(() => {
-    if (open) {
-      loadQueue();
-    } else {
+    if (!open) {
       // Clear search cache when dialog closes
       searchCache.current = {}; 
     }
@@ -151,113 +211,53 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
     }
   };
 
-  const loadQueue = async () => {
-    try {
-      const response = await fetch('/api/food/smart-entry', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ action: 'get_queue', data: {} }),
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        setQueue(result.data.queue || []);
-      }
-    } catch (err) {
-      console.error('Failed to load queue:', err);
-    }
-  };
-
-  const addToQueue = async (isPersonalFood = false, personalFoodId?: string, personalFoodData?: PersonalFood) => {
+  const addToQueue = (isPersonalFood = false, personalFoodId?: string, personalFoodData?: PersonalFood) => {
     const foodName = isPersonalFood && personalFoodData ? personalFoodData.name : currentInput;
     
     if (!foodName.trim()) return;
 
-    try {
-      const requestData = {
-        action: 'add_to_queue',
-        data: {
-          name: foodName,
-          quantity,
-          unit,
-          mealType,
-          isPersonalFood,
-          personalFoodId,
-          // Pass complete personal food data to avoid backend lookup
-          personalFoodData: isPersonalFood && personalFoodData ? {
-            _id: personalFoodData._id,
-            name: personalFoodData.name,
-            nutrition: personalFoodData.nutrition,
-            defaultQuantity: personalFoodData.defaultQuantity,
-            defaultUnit: personalFoodData.defaultUnit
-          } : null
-        }
-      };
+    // Generate a unique client-side ID for the queue item
+    const clientSideId = Date.now().toString() + '-' + Math.random().toString(36).substring(2, 9);
 
-      const response = await fetch('/api/food/smart-entry', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(requestData),
-      });
+    const newQueuedItem: QueuedFood = {
+      id: clientSideId, // Use client-generated ID
+      name: foodName,
+      quantity,
+      unit,
+      mealType,
+      isPersonalFood,
+      personalFoodId: isPersonalFood ? (personalFoodId) : undefined,
+      personalFoodData: isPersonalFood && personalFoodData ? {
+        _id: personalFoodData.id,
+        name: personalFoodData.name,
+        nutrition: personalFoodData.nutrition,
+        defaultQuantity: personalFoodData.defaultQuantity,
+        defaultUnit: personalFoodData.defaultUnit
+      } : undefined,
+      status: isPersonalFood ? 'ready' : 'needs_analysis'
+    };
 
-      const result = await response.json();
-      if (result.success) {
-        setQueue(result.data.queue || []);
-        setCurrentInput('');
-        setPersonalSuggestions([]);
-      }
-    } catch (err) {
-      setError('Failed to add to queue');
+    // Add this console.log for debugging personal food additions
+    if (isPersonalFood) {
+      console.log('CLIENT addToQueue - Adding PERSONAL food:', newQueuedItem);
+    } else {
+      console.log('CLIENT addToQueue - Adding NEW food:', newQueuedItem);
     }
+
+    setQueue(prevQueue => [...prevQueue, newQueuedItem]);
+    setCurrentInput('');
+    setPersonalSuggestions([]);
+    // No API call here, backend will get the full queue on processQueue
   };
 
-  const removeFromQueue = async (itemId: string) => {
-    try {
-      const response = await fetch('/api/food/smart-entry', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          action: 'remove_from_queue',
-          data: { itemId }
-        }),
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        setQueue(result.data.queue || []);
-      }
-    } catch (err) {
-      setError('Failed to remove from queue');
-    }
+  const removeFromQueue = (itemId: string) => {
+    setQueue(prevQueue => prevQueue.filter(item => item.id !== itemId));
+    // No API call here
   };
 
-  const clearQueue = async () => {
-    try {
-      const response = await fetch('/api/food/smart-entry', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ action: 'clear_queue', data: {} }),
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        setQueue([]);
-      }
-    } catch (err) {
-      setError('Failed to clear queue');
-    }
+  const clearQueue = () => {
+    setQueue([]);
+    // No API call here
   };
 
   const processQueue = async () => {
@@ -457,35 +457,7 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
                 🚀 Your Foods (Ready to Add):
               </Typography>
               <Stack spacing={1}>
-                {personalSuggestions.map((food) => (
-                  <Card key={food._id} variant="outlined" sx={{ bgcolor: 'success.50', borderColor: 'success.200' }}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Box>
-                          <Typography variant="body1" fontWeight="bold">
-                            {food.name}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {food.defaultQuantity} {food.defaultUnit} • {food.nutrition?.calories || 0} cal
-                            {food.timesUsed > 1 && ` • Used ${food.timesUsed} times`}
-                            <Chip label="No AI needed" size="small" color="success" sx={{ ml: 1 }} />
-                          </Typography>
-                        </Box>
-                        <Box display="flex" gap={1}>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            startIcon={<QueueIcon />}
-                            onClick={() => addToQueue(true, food._id, food)}
-                            data-tour="add-to-queue"
-                          >
-                            Add to Queue
-                          </Button>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))}
+                {suggestionListContent}
               </Stack>
               <Divider sx={{ my: 2 }} />
             </Box>
@@ -524,7 +496,7 @@ export const SmartFoodEntry: React.FC<SmartFoodEntryProps> = ({
                           <Typography variant="body1">
                             {item.quantity} {item.unit} {item.name}
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body2" color="text.secondary" component="div">
                             {item.mealType} • {item.isPersonalFood ? 'Personal Food' : 'Needs AI Analysis'}
                           </Typography>
                         </Box>

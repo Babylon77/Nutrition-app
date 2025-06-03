@@ -273,6 +273,37 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 
 ---
 
+## **SPRINT 2.75: Client-Side Queue Refactor** 
+*Priority: CRITICAL | Duration: 0.5 week | Based on Render Stability Issues*
+
+### **Goals**
+- Resolve food queue overwriting issue on Render by making queue management fully client-side.
+- Achieve true statelessness for the queue-building process in the backend.
+- Improve application robustness and predictability in a multi-instance environment.
+
+### **Rationale**
+- Persistent issues with `req.session.foodQueue` not reliably persisting between requests on Render when using `connect-mongo`, leading to items being overwritten.
+- Adopting a fully client-managed queue for the "Smart Food Entry" feature aligns better with stateless backend principles and is more resilient to cloud platform behaviors (e.g., instance restarts, multiple PIDs).
+
+### **Key Changes**
+- **Frontend (`SmartFoodEntry.tsx`)**:
+  - The component will now manage the food queue entirely in its local React state.
+  - Functions `addToQueue`, `removeFromQueue`, `clearQueue` will modify this local state directly, without API calls for these actions.
+  - A unique client-side ID will be generated for each queued item.
+  - The `loadQueue` function (previously fetching from session) will be removed.
+  - The `processQueue` function will send the complete, client-managed queue to the backend.
+- **Backend (`/api/food/smart-entry` route)**:
+  - Server-side session management for the food queue (`req.session.foodQueue`) will be removed for the queue-building phase.
+  - API actions `add_to_queue`, `remove_from_queue`, `clear_queue`, `get_queue` will be deprecated/removed as these operations are now client-side.
+  - The `process_queue` action will solely rely on the `itemsToProcess` array sent from the client in the request body.
+
+### **Success Criteria**
+- Users can add multiple food items to the queue in `SmartFoodEntry` on Render without previous items being overwritten.
+- The food queue operates reliably and consistently across both development and production (Render) environments.
+- Backend `smart-entry` endpoint is simplified by removing session-based queue logic.
+
+---
+
 ### **Post-Sprint 2.5 Stability Fixes & Optimizations (June 2025)** 🛠️
 *A series of critical fixes and improvements were implemented to ensure application stability on Render and resolve data integrity issues that arose during and after Sprint 2.5 deployment.*
 

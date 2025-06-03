@@ -881,103 +881,67 @@ router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
       });
 
     case 'add_to_queue':
-      // Add item to processing queue (stored in session/memory for now)
-      // In production, you might store this in Redis or database
-      if (!req.session.foodQueue) {
-        req.session.foodQueue = [];
-      }
-
-      const queueItem = {
-        id: Date.now().toString(),
-        name: data.name,
-        quantity: data.quantity,
-        unit: data.unit,
-        mealType: data.mealType,
-        isPersonalFood: data.isPersonalFood || false,
-        personalFoodId: data.personalFoodId || null,
-        personalFoodData: data.personalFoodData || null, // Store complete personal food data
-        status: data.isPersonalFood ? 'ready' : 'needs_analysis'
-      };
-
-      console.log('🏗️ BACKEND ADD TO QUEUE - Adding item:', {
-        name: queueItem.name,
-        isPersonalFood: queueItem.isPersonalFood,
-        hasPersonalFoodData: !!queueItem.personalFoodData,
-        personalFoodId: queueItem.personalFoodId
+      // This case is now deprecated as queue is managed client-side.
+      // console.log('🏗️ BACKEND ADD TO QUEUE - DEPRECATED');
+      return res.status(410).json({
+        success: false,
+        action: 'add_to_queue',
+        message: 'This action is deprecated; queue is managed client-side.',
+        data: { queue: [] } // Return empty queue or appropriate response
       });
-
-      req.session.foodQueue.push(queueItem);
-
-      req.session.save((err) => {
-        if (err) {
-          console.error('Failed to save session after adding to queue:', err);
-          return res.status(500).json({ success: false, message: 'Failed to update food queue' });
-        }
-        return res.json({
-          success: true,
-          action: 'add_to_queue',
-          data: { queue: req.session.foodQueue }
-        });
-      });
-      break;
+      // break; // Unreachable due to return
 
     case 'get_queue':
-      // Get current queue state
-      return res.json({
-        success: true,
+      // This case is now deprecated.
+      // console.log('BACKEND GET QUEUE - DEPRECATED');
+      return res.status(410).json({
+        success: false,
         action: 'get_queue',
-        data: { queue: req.session.foodQueue || [] }
+        message: 'This action is deprecated; queue is managed client-side.',
+        data: { queue: [] }
       });
+      // break; // Unreachable due to return
 
     case 'remove_from_queue':
-      // Remove item from queue
-      if (req.session.foodQueue) {
-        req.session.foodQueue = req.session.foodQueue.filter(
-          item => item.id !== data.itemId
-        );
-      }
-
-      req.session.save((err) => {
-        if (err) {
-          console.error('Failed to save session after removing from queue:', err);
-          return res.status(500).json({ success: false, message: 'Failed to update food queue' });
-        }
-        return res.json({
-          success: true,
-          action: 'remove_from_queue',
-          data: { queue: req.session.foodQueue || [] }
-        });
+      // This case is now deprecated.
+      // console.log('BACKEND REMOVE FROM QUEUE - DEPRECATED');
+      return res.status(410).json({
+        success: false,
+        action: 'remove_from_queue',
+        message: 'This action is deprecated; queue is managed client-side.',
+        data: { queue: [] }
       });
-      break;
+      // break; // Unreachable due to return
 
     case 'clear_queue':
-      // Clear entire queue
-      req.session.foodQueue = [];
-
-      req.session.save((err) => {
-        if (err) {
-          console.error('Failed to save session after clearing queue:', err);
-          return res.status(500).json({ success: false, message: 'Failed to clear food queue' });
-        }
-        return res.json({
-          success: true,
-          action: 'clear_queue',
-          data: { queue: [] }
-        });
+      // This case is now deprecated.
+      // console.log('BACKEND CLEAR QUEUE - DEPRECATED');
+      return res.status(410).json({
+        success: false,
+        action: 'clear_queue',
+        message: 'This action is deprecated; queue is managed client-side.',
+        data: { queue: [] }
       });
-      break;
+      // break; // Unreachable due to return
 
     case 'process_queue':
-      // Process all items in queue
-      const queue = req.body.data && req.body.data.itemsToProcess ? req.body.data.itemsToProcess : [];
-      const readyItems = queue.filter(item => item.status === 'ready');
-      const needsAnalysis = queue.filter(item => item.status === 'needs_analysis');
+      // Process all items in queue - The queue is now sent directly from the client.
+      const itemsToProcessFromClient = req.body.data && req.body.data.itemsToProcess ? req.body.data.itemsToProcess : [];
+      
+      // Ensure itemsToProcessFromClient is an array
+      if (!Array.isArray(itemsToProcessFromClient)) {
+        console.error('❌ BACKEND PROCESS QUEUE - itemsToProcess is not an array:', itemsToProcessFromClient);
+        throw createError('itemsToProcess must be an array', 400);
+      }
+
+      const readyItems = itemsToProcessFromClient.filter(item => item.status === 'ready');
+      const needsAnalysis = itemsToProcessFromClient.filter(item => item.status === 'needs_analysis');
 
       console.log('🎯 BACKEND PROCESS QUEUE - Starting processing...');
-      console.log('📋 BACKEND PROCESS QUEUE - Total queue items:', queue.length);
+      console.log('📋 BACKEND PROCESS QUEUE - Total queue items:', itemsToProcessFromClient.length);
       console.log('🥗 BACKEND PROCESS QUEUE - Ready items (personal foods):', readyItems.length);
       console.log('🤖 BACKEND PROCESS QUEUE - Need analysis items (AI foods):', needsAnalysis.length);
-      console.log('📝 BACKEND PROCESS QUEUE - Full queue:', JSON.stringify(queue, null, 2));
+      console.log('📝 BACKEND PROCESS QUEUE - Full queue:', JSON.stringify(itemsToProcessFromClient, null, 2));
 
       let analysisResults = [];
 
@@ -1134,8 +1098,8 @@ router.post('/smart-entry', protect, asyncHandler(async (req, res) => {
         calories: item.nutrition?.calories || 0
       })));
 
-      // Clear the queue
-      req.session.foodQueue = [];
+      // Clear the queue (session queue is no longer used for building, so this line is mostly for hygiene if any old session data existed or if other parts of session need clearing, but its primary role for foodQueue is gone)
+      // req.session.foodQueue = []; // Removing this as req.session.foodQueue is no longer the source of truth for processing.
 
       return res.json({
         success: true,
