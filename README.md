@@ -18,7 +18,9 @@ Fuel IQ is the intelligent nutrition platform that turns food and health data in
 - **Intelligent Food Lookup**: Advanced food search and nutrition estimation
 - **Personal Food Database**: Your own searchable food history with auto-suggestions  
 - **Supplement Management**: Track vitamins, supplements, and medications
-- **Bloodwork Analysis**: Upload lab results for AI-powered health correlations
+- **Bloodwork Analysis & Second Opinions**: Upload lab results for AI-powered health correlations and get second opinions from different AI models.
+- **AI Assistant**: Engage in conversational food logging, get contextual help, and access app functionalities.
+- **Personalized Calorie & Macronutrient Goals**: Dynamically calculated targets based on your profile and goals, consistent across the app.
 - **Performance Analytics**: Personalized insights connecting diet to health metrics
 - **Mobile-First Design**: Optimized for iPhone and Android devices
 
@@ -33,7 +35,7 @@ Fuel IQ is the intelligent nutrition platform that turns food and health data in
 **Backend:**
 - Node.js with Express
 - MongoDB with Mongoose
-- **OpenAI GPT-4o-mini** for intelligent analysis
+- **OpenAI GPT-4o-mini & Google Gemini** for intelligent analysis
 - JWT authentication
 
 **Design System:**
@@ -74,6 +76,9 @@ JWT_SECRET=your-jwt-secret-here
 # OpenAI API
 OPENAI_API_KEY=your-openai-api-key
 
+# Google Gemini API
+GEMINI_API_KEY=your-gemini-api-key
+
 # App Settings
 NODE_ENV=development
 PORT=5000
@@ -109,7 +114,7 @@ Visit `http://localhost:3000` to access Fuel IQ.
 ## 🔮 Key Features
 
 - **Performance Analytics**: 3-7 days of food logs recommended for best insights
-- **Smart Recommendations**: AI-powered suggestions based on your unique data
+- **Smart Recommendations**: AI-powered suggestions based on your unique data (now with enhanced context including app documentation and broader user data).
 - **Health Correlations**: Connect nutrition patterns to biomarker changes
 - **Mobile Optimized**: Works seamlessly on all devices
 
@@ -147,13 +152,19 @@ fuel-iq/
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📈 Features in Development
+## 📈 Features Recently Added / In Development
 
-- Multi-LLM analysis for second opinions
-- Advanced sleep and lifestyle tracking
-- Photo + voice food analysis
-- Barcode scanning for packaged foods
-- Enhanced bloodwork PDF extraction
+- **Recently Added**:
+    - Multi-LLM analysis for second opinions on health data.
+    - AI Assistant with conversational food logging and enhanced contextual understanding.
+    - Expanded AI data access including app functionality and tutorial content.
+    - Standardized calorie and macronutrient goal calculations across the app.
+- **In Development**:
+    - Health Journal with AI-driven insights and correlations.
+    - Advanced sleep and lifestyle tracking.
+    - Photo + voice food analysis.
+    - Barcode scanning for packaged foods.
+    - Enhanced bloodwork PDF extraction.
 
 ## 🙏 Acknowledgments
 

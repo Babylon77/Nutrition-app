@@ -37,6 +37,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -153,6 +154,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const handleInputFocus = () => {
+    if (isMobile) {
+      setTimeout(() => {
+        inputContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 150);
     }
   };
 
@@ -398,6 +407,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
 
           {/* Input Area */}
           <Box
+            ref={inputContainerRef}
             sx={{
               p: 2,
               backgroundColor: '#ffffff',
@@ -413,6 +423,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
+                onFocus={handleInputFocus}
                 placeholder="Ask a question or log food (e.g., 'log an apple')..."
                 variant="outlined"
                 size="small"

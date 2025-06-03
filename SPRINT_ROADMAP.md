@@ -29,6 +29,10 @@ This roadmap implements the features and priorities already outlined in `FEATURE
 - **During**: Monitor terminal for errors continuously
 - **After**: Full mobile testing and integration verification
 
+### **Project Management Notes (From Review)**
+- **Sprint Planning**: For future sprints, define clear "Acceptance Criteria" and a "Definition of Done" for each story/task to improve clarity and measurability.
+- **Tooling**: Consider exploring GitHub Projects boards for sprint management and `release-please` for automated versioning and changelog generation.
+
 ---
 
 ## **SPRINT 1: Food System Core Improvements** 
@@ -349,6 +353,9 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 
 ### **Post-Sprint 3.1 Refinements**
 -   ✅ **Calorie and Macronutrient Goal Consistency**: Standardized calorie and macronutrient (protein, carbs, fat) goal calculation logic across the Dashboard and Food Log pages to ensure consistent targets are displayed to the user. This involved aligning activity multipliers, weekly weight change caps (adjusted to 3 lbs/week), and macro derivation logic (protein based on body weight, fat as 25% of target calories, carbs as remainder).
+-   [ ] **AI Assistant Chat Persistence**: Ensure AI assistant chat history persists when navigating away from and back to the assistant page.
+-   [ ] **Analysis Second Opinion Dropdown**: Fix UI bug preventing selection of the first model (Gemini 1.5 Flash) in the second opinion LLM dropdown on the Analysis page.
+-   [ ] **Second Opinion Summary on Main Analysis Card**: Display a concise summary of the second opinion directly on the main analysis card, focusing on key agreements and differences with the primary analysis, rather than just in the detailed view.
 
 ---
 
@@ -360,12 +367,19 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 - Develop specific AI-driven analyses for combined health data (building on data access from Sprint 3.1)
 - Build cross-correlation analytics between diet, supplements, and biomarkers
 - Complete pending health metric features (hormones, bloodwork UI)
+- Begin foundational backend refactoring for scalability and testability.
+- **Define and begin integrating core AI Assistant personality and initial proactive engagement features.**
 
 ### **User Stories**
 1. **As a user, I want second opinions on my health analysis from different AI models**
 2. **As a user, I want to save and track AI recommendations as actionable items**
 3. **As a user, I want my supplements included in my overall health analysis**
 4. **As a user, I want to see correlations between my diet, supplements, and lab results**
+5. **As a user, I want to keep a free-form health journal to log notes, symptoms, or feelings.**
+6. **As a user, I want to easily create journal entries using the AI assistant.**
+7. **As a user, I want an option for the AI to analyze my journal entries for potential insights, correlations with my health data, or mood patterns.**
+8. **As a user, I want the AI Assistant to have a clear, helpful, and slightly blunt personality, like a knowledgeable teen fitness enthusiast.**
+9. **As a user, I want the AI Assistant to sometimes initiate helpful prompts or reminders to encourage me to log data or check in.**
 
 ### **Features from FEATURE_PLANNING.md High Priority**
 - [ ] **Multi-LLM Second Opinion** - ~~Cross-validate analysis with Gemini vs ChatGPT~~ **(Addressed by SPRINT 3.1)**
@@ -376,6 +390,12 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
     -   Actionable recommendation extraction
     -   Personal health action items tracking
     -   Progress tracking on AI suggestions
+- [ ] **Health Journal with AI Analysis**
+    -   [ ] Dedicated journal page/tab with free-form text editor.
+    -   [ ] Backend API for creating, retrieving, updating, and deleting journal entries.
+    -   [ ] AI Assistant command integration for creating journal entries (e.g., "create note", "journal entry").
+    -   [ ] Backend logic for AI to process and analyze journal entries (optional, user-triggered).
+    -   [ ] UI for displaying AI-driven journal insights.
 - [ ] **Comprehensive Health Integration - Analytical Applications** - (Data access provided by Sprint 3.1)
     -   [ ] Combined diet + supplements analysis by LLM
     -   [ ] Potential drug-nutrient interaction warnings (research and implement if feasible)
@@ -384,34 +404,68 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
     -   Statistical correlation identification
     -   Trend analysis across all health data
     -   Predictive insights based on historical patterns
+- [ ] **Proactive & Personalized AI Assistant (Phase 1 - Personality & Basic Prompts)**:
+    -   [ ] Define core tenets and example dialogue for the AI Assistant's personality (16-year-old nutrition/fitness enthusiast, blunt, to-the-point, knowledgeable, encouraging).
+    -   [ ] Implement initial proactive prompts (e.g., reminder to log a meal if not done by a certain time, morning greeting/check-in).
 
 ### **Technical Tasks**
-- ~~Integrate Gemini Pro API for second opinion analysis~~ **(Moved to SPRINT 3.1)**
 - Build recommendation action tracking system
-- Create comprehensive data aggregation for multi-source analysis (if not fully covered by AI data access in Sprint 3.1)
-- Implement correlation algorithms across diet/supplements/biomarkers
-- ~~Design AI comparison interface~~ **(Moved to SPRINT 3.1)**
+- Health Journal Backend: Design schema, Develop CRUD API endpoints.
+- Health Journal Frontend: Create Journal page/tab, Implement display.
+- AI Assistant Journaling: Update AI assistant for journaling commands.
+- AI Journal Analysis: Develop prompts, backend logic, UI for insights.
+- Create comprehensive data aggregation for multi-source analysis.
+- Implement correlation algorithms across diet/supplements/biomarkers/journal entries.
+
+- **Backend Refactoring (Phase 1 - Sprint 3/4 Focus):**
+    - [ ] **Service Layer**: Begin refactoring controllers to extract business logic into a separate services layer.
+    - [ ] **Input Validation**: Introduce robust input validation (e.g., Zod or Joi) in API routes/controllers.
+    - [ ] **Centralized Error Handling**: Implement a basic centralized Express error handler.
+    - [ ] **Database Indexing**: Identify and implement critical database indexes (e.g., for food logs, user data).
+    - [ ] **Security - Password Storage**: Review and ensure password storage meets best practices (e.g., Argon2id). (See `SECURITY_AND_COMPLIANCE.md`)
+    - [ ] **Security - PII Encryption**: Investigate and plan for MongoDB TLS and at-rest encryption if self-hosting, or confirm Atlas configurations. (See `SECURITY_AND_COMPLIANCE.md`)
 
 ### **Success Criteria**
-- ~~Multi-LLM analysis providing valuable second opinions~~ **(Addressed by SPRINT 3.1)**
 - Users can save and track AI recommendations effectively
 - Supplements data integrated into overall health analysis leading to actionable insights (e.g., interaction warnings)
 - Meaningful correlations identified and presented to users
+- Users can create, view, and manage free-form health journal entries.
+- Users can initiate journal entries via the AI Assistant.
+- Optional AI analysis provides useful insights or correlations based on journal content.
+- AI Assistant responses begin to reflect the defined personality.
+- Users receive occasional, non-intrusive proactive prompts from the AI Assistant.
 
 ---
 
-## **SPRINT 4: Lifestyle Integration**
-*Priority: HIGH | Duration: 2 weeks | Based on Sleep & Lifestyle Features*
+## **SPRINT 4: Lifestyle Integration & Foundational Improvements** 
+*Priority: HIGH | Duration: 2 weeks | Based on Sleep & Lifestyle Features & Backend Refactoring*
 
 ### **Goals**
 - Add sleep and lifestyle factor tracking
+- **Implement user weight tracking with RDA/goal integration and reminders.**
 - Implement comprehensive health correlation
 - Prepare for device integrations
+- Continue backend refactoring and implement performance optimizations.
+- **Expand AI Assistant proactivity and personalization.**
+
+### **User Stories**
+1. **As a user, I want to log my weight regularly and see my progress over time.**
+2. **As a user, I want my nutrition goals (RDAs, calories) to adjust automatically when my weight changes significantly.**
+3. **As a user, I want a configurable reminder to log my weight (e.g., weekly).**
+4. **As a user, I want the AI assistant to offer more personalized and context-aware proactive interactions.**
 
 ### **Features from FEATURE_PLANNING.md High Priority**
 - [ ] **Sleep Integration** - Connect sleep data for comprehensive health correlation
 - [ ] **Lifestyle Factor Tracking** - Manual alcohol consumption, smoking, substance tracking
 - [ ] **Sleep Quality Correlations** - Analyze late-night eating, alcohol effects on sleep
+- [ ] **Weight Tracking & Management**:
+    -   [ ] UI for weight entry and historical chart/display.
+    -   [ ] Backend logic to store weight entries and associate with user profile.
+    -   [ ] Integration with RDA/calorie goal calculation logic to update targets based on new weight.
+    -   [ ] System for configurable reminders (e.g., weekly email or in-app notification).
+- [ ] **Proactive & Personalized AI Assistant (Phase 2 - Deeper Engagement)**:
+    -   [ ] Implement more sophisticated triggers for proactive AI interaction (e.g., based on logged food patterns, achieved goals, lack of specific data logging).
+    -   [ ] Enhance AI's ability to personalize its proactive messages based on user history and preferences.
 
 ### **Technical Tasks**
 - Design sleep and lifestyle data schemas
@@ -419,26 +473,49 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 - Implement correlation analysis between diet, sleep, and lifestyle
 - Create lifestyle factor UI
 
+- **Weight Tracking**: Design schema, develop backend API, create frontend UI for logging and viewing weight. Implement reminder system. Integrate with existing goal calculation logic.
+- **AI Assistant Proactivity (Phase 2)**: Develop more complex rules/triggers for AI assistant proactive messages. Refine personality integration in a wider range of scenarios.
+
+- **Backend & Performance (Phase 2 - Sprint 4 Focus):**
+    - [ ] **Asynchronous AI Processing**: Implement a job queue (e.g., BullMQ) for handling external AI API calls asynchronously.
+    - [ ] **API Caching & Rate Limiting**: Implement caching for AI prompts and robust rate limiting on public/expensive endpoints.
+    - [ ] **Frontend Performance - Food Logger**: Optimize food logger state management and component rendering (memoization).
+    - [ ] **Frontend Performance - Bundle Size**: Analyze bundle size (webpack-bundle-analyzer) and implement optimizations (tree-shaking, efficient libraries).
+    - [ ] **Security - Consent & Data Deletion**: Design and begin implementation of user consent mechanisms and data deletion endpoint. (See `SECURITY_AND_COMPLIANCE.md`)
+
 ### **Success Criteria**
 - Sleep data entry and tracking functional
 - Lifestyle factors integrated into health analysis
 - Correlations between diet, sleep, and lifestyle visible
+- Users can log weight, view history, and receive reminders.
+- RDAs and calorie goals dynamically adjust to weight changes.
+- AI Assistant demonstrates more varied and personalized proactive interactions.
 
 ---
 
-## **SPRINT 5: Advanced Input Methods**
-*Priority: MEDIUM | Duration: 3 weeks | Based on V2 Features*
+## **SPRINT 5: Advanced Input Methods & UI Refinements**
+*Priority: MEDIUM | Duration: 3 weeks | Based on V2 Features & UX improvements*
 
 ### **Goals**
-- Implement photo + voice food analysis
-- Add barcode scanning capability
+- Implement prioritized advanced input methods (barcode, image recognition, "yesterday again")
+- **Implement native in-app voice input for the AI Assistant.**
 - Create recipe storage system
+- Address UI/UX improvement suggestions from review & brainstorming.
 
-### **Features from FEATURE_PLANNING.md Medium Priority**
-- [ ] **Photo + Voice Mode** - Camera + voice/text description for complex dish analysis
-- [ ] **Barcode Scanning** - UPC lookup for packaged foods
+### **Features from FEATURE_PLANNING.md**
+- [ ] **Advanced Input Methods (Implementation):**
+    - [ ] Barcode Scanning integration.
+    - [ ] Image-Based Food Recognition (Vision API integration).
+    - [ ] "Yesterday Again" / Quick Meal Copy feature.
+- [ ] **Native In-App Voice Input for AI Assistant**:
+    -   [ ] Integrate a voice recognition library/API into the frontend AI Assistant component.
+    -   [ ] UI element (e.g., microphone icon) to trigger voice input mode.
+    -   [ ] Process recognized speech and send as text to the AI Assistant.
 - [ ] **Recipe Storage** - Save and reuse custom recipes
-- [ ] **Investigate & Improve Long-String Food Logging**: Address issue where very long, descriptive food log entries (e.g., full meal descriptions) result in generic logging (like "dinner") without detailed calorie/nutrient breakdown. Evaluate potential LLM limitations, input string length limits, or parsing issues. Consider testing with alternative LLM models for better handling of complex, lengthy food descriptions.
+- [ ] **Investigate & Improve Long-String Food Logging**
+- [ ] **UI/UX Enhancements (from review & brainstorming - select top items):**
+    - [ ] *Example: Dashboard Customization*
+    - [ ] *Example: Enhanced Food Search with Quick Add Filters*
 
 ### **Technical Tasks**
 - Integrate camera and voice recording
@@ -446,10 +523,13 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 - Create recipe management system
 - Implement complex dish analysis workflow
 
+- **Native Voice Input**: Research and select a suitable voice recognition library/service (client-side or server-side processing). Implement frontend UI and integration to capture and process voice.
+
 ### **Success Criteria**
 - Photo + voice analysis working for complex dishes
 - Barcode scanning functional for packaged foods
 - Recipe storage and reuse system operational
+- Users can reliably use native voice input to interact with the AI Assistant.
 
 ---
 

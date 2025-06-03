@@ -74,6 +74,10 @@
 *Critical improvements for core user experience and cost optimization*
 
 #### Food System Enhancements
+- [ ] **Advanced Input Methods (Prioritized)**:
+    - [ ] **Barcode Scanning** - UPC lookup for packaged foods (move from Medium Priority).
+    - [ ] **Image-Based Food Recognition (Vision API)** - e.g., gpt-4o-vision for plate recognition (move from Medium Priority - Photo + Voice Mode).
+- [ ] **"Yesterday Again" / Quick Meal Copy** - One-tap to log a previous day's meal or a common meal.
 - [ ] **Bulk Food Entry Interface** - Add multiple foods before single API call
 - [ ] **Personal Food Database** - Search user's previous foods first, then API
 - [ ] **User Food Adjustments** - Allow quantity/serving size adjustments with proportional scaling
@@ -86,6 +90,9 @@
 - [ ] **AI Recommendation Actions** - Save/highlight LLM suggestions into master checklist (General action items TBD)
 - [ ] **Enhanced Health Metrics UI** - More intuitive manual entry for biomarkers
 - ✅ **AI Assistant UX/Readability** - Improved output formatting. → **COMPLETED (Sprint 3.1)**
+- [ ] **Proactive & Personalized AI Assistant**:
+    -   [ ] AI Assistant to proactively initiate conversations or provide timely prompts/nudges to encourage engagement (e.g., "Haven't logged breakfast yet?", "How are you feeling today for your journal?").
+    -   [ ] Define and implement a distinct personality for the AI Assistant: based on a 16-year-old interested in nutrition/fitness; blunt, to-the-point, knowledgeable, and encouraging.
 
 #### Advanced Analytics Features
 - ✅ **Multi-LLM Second Opinion** - Cross-validate analysis with Gemini vs ChatGPT → **COMPLETED (Sprint 3.1)**
@@ -95,13 +102,24 @@
 - [ ] **Lifestyle Factor Tracking** - Manual alcohol consumption, smoking, substance tracking
 - [ ] **Health Metrics History** - Historical tracking with trend analysis and correlations
 - ✅ **AI Assistant Full Data Access** - Provide AI with food logs, personal foods, supplements, bloodwork, app context. → **COMPLETED (Sprint 3.1)**
+- [ ] **Health Journal with AI Analysis** - Allow users to keep free-form journal entries with optional AI-driven insights.
+    -   Manual journal entry via dedicated page/tab.
+    -   AI Assistant integration for creating journal entries (e.g., "create note").
+    -   Optional AI analysis of journal content for correlations, mood tracking, potential interaction identification.
+- [ ] **Weight Tracking & Management**:
+    -   [ ] Dedicated interface for users to log their weight regularly.
+    -   [ ] Historical weight tracking with visualization (charts/graphs).
+    -   [ ] Automatic recalculation/update of RDAs and calorie/macro goals based on weight changes (ensure this integrates with existing RDA logic).
+    -   [ ] Configurable reminders for weight check-ins (e.g., weekly default).
 
 ### Medium Priority (V2 Features)
 *Valuable additions that enhance but don't fundamentally change core experience*
 
 #### Advanced Input Methods
-- [ ] **Photo + Voice Mode** - Camera + voice/text description for complex dish analysis
-- [ ] **Barcode Scanning** - UPC lookup for packaged foods
+- [ ] **Native In-App Voice Input for AI Assistant**: Implement a microphone button/feature directly within the AI Assistant UI for native voice commands, rather than relying solely on OS-level voice-to-text.
+- [ ] **Barcode Scanning** - UPC lookup for packaged foods (move from Medium Priority).
+- [ ] **Image-Based Food Recognition (Vision API)** - e.g., gpt-4o-vision for plate recognition (move from Medium Priority - Photo + Voice Mode).
+- [ ] **Photo + Voice Mode (Refined)** - Focus on voice/text description for complex dish analysis if full image recognition is a larger effort, or as a fallback.
 - [ ] **Recipe Storage** - Save and reuse custom recipes
 
 #### Enhanced Analytics & Integration
@@ -131,6 +149,13 @@
 - [ ] **Notification System**: Smart reminders and alerts
 - [ ] **Advanced Sleep API Integration** - Direct API connections to Garmin, Fitbit, Oura (V3/V4)
 
+### Further Feature Enhancement Ideas (Brainstormed)
+*   **Recipe Analysis & Storage:** Allow users to input ingredients for a recipe, get a full nutritional breakdown, and save it for quick logging.
+*   **Barcode Scanning for Packaged Foods:** Implement camera-based barcode scanning to automatically fetch and log nutritional information.
+*   **Advanced Progress Visualization & Reporting:** Offer customizable weekly/monthly reports, trend lines for specific nutrients against other metrics, and more engaging progress views.
+*   **Integration with Wearables/Health Platforms:** Allow connections with services like Apple Health, Google Fit, Fitbit to import activity, sleep, or weight data.
+*   **Smart Meal & Snack Suggestions:** AI-powered suggestions for meals/snacks based on remaining calorie/macro targets, preferences, and time of day.
+
 ## Technical Debt & Improvements 🔧
 
 ### Code Quality
@@ -145,6 +170,16 @@
 - [ ] **CDN**: Static asset delivery optimization
 - [ ] **Scaling**: Horizontal scaling preparation
 - [ ] **Monitoring**: Health checks and alerting
+
+### New Technical Debt Items
+- [ ] **Refactor Service Boundaries**: Improve backend architecture by separating controllers, services (business logic), and models (DB access).
+- [ ] **Centralized Error Handling**: Implement a central Express error-handler and typed error classes.
+- [ ] **Database Indexing**: Create necessary compound indexes (e.g., on {userId, date} for logs) to optimize query performance.
+- [ ] **Enhanced Rate Limiting & Caching**: Implement robust rate limiting (e.g., `express-rate-limit`) and caching for external API calls (e.g., OpenAI, Gemini).
+- [ ] **Asynchronous AI Processing**: Move synchronous AI calls (e.g., food analysis) to a job queue (e.g., BullMQ) with client-side polling/WebSockets for completion notifications.
+- [ ] **Frontend Performance Optimization**:
+    - [ ] Memoize components and optimize state management in food logger to reduce re-renders.
+    - [ ] Analyze and reduce bundle size (e.g., MUI tree-shaking, replace lodash, use webpack-bundle-analyzer).
 
 ## Competitive Analysis 📈
 
@@ -296,6 +331,25 @@
 - **Fixed**: API URL configuration for production vs development
 - **Fixed**: MongoDB Atlas network access and connection
 - **Added**: Auto-deploy on git push to master branch
+
+### Further UI/UX Improvement Ideas (Brainstormed)
+*   **Dashboard Customization:** Allow users to personalize the main dashboard by choosing which widgets are visible and their order.
+*   **Enhanced Food Search with Quick Add Filters:** Improve food search with more robust autocomplete (showing key nutrition facts in results) and filters for "recently logged," "personal foods," etc.
+*   **Interactive Goal Setting & Adjustment:** Make setting nutrition/weight goals more visual and interactive (e.g., sliders, visual feedback on impacts).
+*   **Streamlined "Quick Log" for Common Items/Meals:** Offer a feature for one-click logging of frequently eaten foods or saved meals.
+*   **Contextual Micro-Interactions & Feedback:** Add subtle animations or micro-interactions for better visual feedback and a more polished feel.
+
+## Go-To-Market & Positioning Notes
+
+- **Target Niche**: Focus initial efforts on the quantified-self / bio-hacker community (e.g., relevant subreddits) who are often early adopters and value detailed tracking but may find current food logging cumbersome.
+- **Pricing USP**: Emphasize a "Free-forever logging; pay only for pro analytics" model. Highlight that core food logging, personal DB, and basic supplement tracking are free, with premium charges for advanced AI analysis, multi-LLM, detailed correlations, etc.
+- **Key Differentiators to Highlight**: AI macro-breakdown for custom foods, supplement tracking, PDF-bloodwork parsing (when fully implemented), multi-LLM second opinions.
+
+## Security & Compliance Considerations
+
+- Key security and compliance measures, including password storage, PII encryption, consent flows, and data deletion rights, are tracked in `SECURITY_AND_COMPLIANCE.md`.
+- [ ] Implement granular user consent flows, especially for sensitive data (bloodwork, AI-analyzed journal entries).
+- [ ] Develop a robust data deletion endpoint and process per user request.
 
 ---
 
