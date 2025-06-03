@@ -19,11 +19,13 @@ interface NutritionValue {
   IconComponent?: React.ElementType;
   isUpperLimit?: boolean;
   category?: string;
+  forcedColor?: 'primary' | 'secondary' | 'error' | 'warning' | 'success' | 'default' | undefined;
 }
 
 interface CompactNutritionSummaryProps {
   totalNutrition: any; // Calculated totals from FoodLog
   recommendedValues: any; // RDVs from FoodLog
+  calorieDisplayColor?: 'success' | 'warning' | 'error' | 'default' | undefined; // New prop for specific calorie color
 }
 
 const NutrientDisplay: React.FC<NutritionValue & { compact?: boolean }> = ({
@@ -34,24 +36,29 @@ const NutrientDisplay: React.FC<NutritionValue & { compact?: boolean }> = ({
   IconComponent,
   isUpperLimit = false,
   compact = false,
+  forcedColor,
 }) => {
-  const percentage = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+  const visualPercentage = goal > 0 ? (current / goal) * 100 : 0;
   const overPercentage = goal > 0 && current > goal ? ((current - goal) / goal) * 100 : 0;
 
   let progressColor: 'primary' | 'secondary' | 'error' | 'warning' | 'success' = 'primary';
   let displayText = `${Math.round(current)} / ${Math.round(goal)}${unit}`;
 
-  if (isUpperLimit) {
+  if (forcedColor && forcedColor !== 'default') {
+    progressColor = forcedColor as 'primary' | 'secondary' | 'error' | 'warning' | 'success';
+  } else if (isUpperLimit) {
     if (current > goal) {
       progressColor = 'error';
       displayText = `${Math.round(current)}${unit} (Max: ${Math.round(goal)}${unit})`;
-    } else if (current > goal * 0.8) {
+    } else if (current > goal * 0.8 && goal > 0) {
       progressColor = 'warning';
     } else {
       progressColor = 'success';
     }
   } else {
-    if (current >= goal) {
+    if (goal === 0) {
+      progressColor = current > 0 ? 'warning' : 'primary';
+    } else if (current >= goal) {
       progressColor = 'success';
     } else if (current >= goal * 0.7) {
       progressColor = 'warning';
@@ -62,7 +69,7 @@ const NutrientDisplay: React.FC<NutritionValue & { compact?: boolean }> = ({
   
   if (compact) {
     return (
-      <Tooltip title={`${label}: ${Math.round(current)} / ${Math.round(goal)}${unit}${isUpperLimit && current > goal ? ' - Over Limit!' : ''}`} placement="top">
+      <Tooltip title={`${label}: ${Math.round(current)} / ${Math.round(goal)}${unit}${isUpperLimit && current > goal ? ' - Over Limit!' : ''}${visualPercentage > 100 && !isUpperLimit ? ` - Over Goal by ${(visualPercentage - 100).toFixed(0)}%` : ''}`} placement="top">
         <Box sx={{ textAlign: 'center', width: 80, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {IconComponent && <IconComponent sx={{ fontSize: 24, color: progressColor === 'error' || progressColor === 'warning' ? `var(--color-${progressColor})` : 'var(--color-text-secondary)', mb: 0.5 }} />}
           <Typography variant="caption" display="block" sx={{ fontSize: '0.65rem', fontWeight: 'medium', lineHeight: 1.2, mb: 0.25 }}>
@@ -73,7 +80,7 @@ const NutrientDisplay: React.FC<NutritionValue & { compact?: boolean }> = ({
           </Typography>
           <LinearProgress 
             variant="determinate" 
-            value={percentage} 
+            value={Math.min(visualPercentage, 100)}
             color={progressColor} 
             sx={{ height: 3, borderRadius: 2, mt: 0.5, width: '100%' }} 
           />
@@ -93,10 +100,15 @@ const NutrientDisplay: React.FC<NutritionValue & { compact?: boolean }> = ({
       </Box>
       <LinearProgress 
         variant="determinate" 
-        value={percentage} 
+        value={Math.min(visualPercentage, 100)}
         color={progressColor} 
         sx={{ height: 6, borderRadius: 3 }} 
       />
+      {overPercentage > 0 && !isUpperLimit && (
+         <Typography variant="caption" color={progressColor === 'success' ? 'text.secondary' : progressColor} sx={{textAlign: 'right', display: 'block'}}> 
+            (+{overPercentage.toFixed(0)}% over goal)
+          </Typography>
+      )}
       {overPercentage > 0 && isUpperLimit && (
          <Typography variant="caption" color="error" sx={{textAlign: 'right', display: 'block'}}>
             (+{overPercentage.toFixed(0)}% over limit)
@@ -154,6 +166,7 @@ const nutrientCategories: Record<string, string> = {
 const CompactNutritionSummary: React.FC<CompactNutritionSummaryProps> = ({
   totalNutrition,
   recommendedValues,
+  calorieDisplayColor,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -168,6 +181,8 @@ const CompactNutritionSummary: React.FC<CompactNutritionSummaryProps> = ({
       goal: recommendedValues.calories || 2000,
       unit: 'kcal',
       IconComponent: CaloriesIcon,
+      isUpperLimit: false,
+      forcedColor: calorieDisplayColor
     },
     {
       label: 'Protein',
@@ -175,6 +190,7 @@ const CompactNutritionSummary: React.FC<CompactNutritionSummaryProps> = ({
       goal: recommendedValues.protein || 50,
       unit: 'g',
       IconComponent: ProteinIcon,
+      isUpperLimit: false,
     },
     {
       label: 'Carbs',
@@ -182,6 +198,7 @@ const CompactNutritionSummary: React.FC<CompactNutritionSummaryProps> = ({
       goal: recommendedValues.carbs || 300,
       unit: 'g',
       IconComponent: CarbsIcon,
+      isUpperLimit: false,
     },
     {
       label: 'Fat',
@@ -189,6 +206,7 @@ const CompactNutritionSummary: React.FC<CompactNutritionSummaryProps> = ({
       goal: recommendedValues.fat || 67,
       unit: 'g',
       IconComponent: FatIcon,
+      isUpperLimit: false,
     },
   ];
 

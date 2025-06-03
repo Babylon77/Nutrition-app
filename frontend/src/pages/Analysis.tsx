@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -31,6 +31,9 @@ import {
   CheckCircle as CheckCircleIcon,
   Star as StarIcon,
   Science as ScienceIcon,
+  RateReview as RateReviewIcon,
+  Delete as DeleteIcon,
+  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 import { apiService } from '../services/api';
@@ -39,6 +42,13 @@ import { Analysis } from '../types';
 interface GenerateAnalysisFormData {
   analysisType: 'nutrition' | 'bloodwork' | 'correlation';
   llmModel: string;
+}
+
+// Define a type for the models available for second opinion
+interface SecondOpinionChoice {
+  value: string;
+  label: string;
+  description?: string;
 }
 
 export const AnalysisPage: React.FC = () => {
@@ -50,18 +60,43 @@ export const AnalysisPage: React.FC = () => {
   const [selectedAnalysis, setSelectedAnalysis] = useState<Analysis | null>(null);
   const [availableModels, setAvailableModels] = useState<{ value: string; label: string; description: string }[]>([]);
   const [currentModel, setCurrentModel] = useState('gpt-4o-mini');
+  const [secondOpinionLoadingId, setSecondOpinionLoadingId] = useState<string | null>(null);
+  const [modelForSecondOpinion, setModelForSecondOpinion] = useState<string>('gemini-1.5-flash-latest');
+  const [showSecondOpinionControlsId, setShowSecondOpinionControlsId] = useState<string | null>(null);
+  const generateAnalysisButtonRef = useRef<HTMLButtonElement>(null);
+  const generateDialogSubmitButtonRef = useRef<HTMLButtonElement>(null);
 
   const {
     control,
     handleSubmit,
     formState: { errors },
     setValue,
+    reset,
   } = useForm<GenerateAnalysisFormData>({
     defaultValues: {
       analysisType: 'nutrition',
       llmModel: 'gpt-4o-mini',
     },
   });
+
+  // Prepare a list of models for the second opinion dropdown using useMemo
+  const secondOpinionModelChoices = useMemo((): SecondOpinionChoice[] => {
+    const geminiOption: SecondOpinionChoice = { 
+      value: 'gemini-1.5-flash-latest', 
+      label: 'Gemini 1.5 Flash', 
+      description: 'Google (fast, versatile)' 
+    };
+    
+    const openAIOptions: SecondOpinionChoice[] = availableModels
+      .filter(m => m.value !== geminiOption.value) // Avoid duplicating Gemini if it were in availableModels by chance
+      .map(m => ({
+        value: m.value,
+        label: m.label,
+        description: m.description.startsWith('OpenAI - ') ? m.description : `OpenAI - ${m.description}`
+      }));
+      
+    return [geminiOption, ...openAIOptions];
+  }, [availableModels]);
 
   useEffect(() => {
     loadAnalyses();
@@ -101,6 +136,38 @@ export const AnalysisPage: React.FC = () => {
     }
   };
 
+  const handleGetSecondOpinion = async (analysisId: string, selectedModel: string) => {
+    if (!selectedModel) {
+      setError('A model must be selected for the second opinion.');
+      return;
+    }
+    setSecondOpinionLoadingId(analysisId);
+    setError('');
+    try {
+      const updatedAnalysis = await apiService.getSecondOpinion(analysisId, selectedModel);
+      setAnalyses(prevAnalyses => 
+        prevAnalyses.map(a => a._id === analysisId ? { ...a, ...updatedAnalysis } : a)
+      );
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to get second opinion');
+    } finally {
+      setSecondOpinionLoadingId(null);
+      setShowSecondOpinionControlsId(null);
+    }
+  };
+
+  const handleShowSecondOpinionDropdown = (analysisId: string) => {
+    setShowSecondOpinionControlsId(analysisId);
+    setModelForSecondOpinion('gemini-1.5-flash-latest');
+  };
+
+  const handleModelSelectForSecondOpinion = (analysisId: string, selectedModel: string) => {
+    setModelForSecondOpinion(selectedModel);
+    if (selectedModel) {
+      handleGetSecondOpinion(analysisId, selectedModel);
+    }
+  };
+
   const generateAnalysis = async (data: GenerateAnalysisFormData) => {
     try {
       setGenerating(true);
@@ -121,7 +188,12 @@ export const AnalysisPage: React.FC = () => {
       }
 
       await loadAnalyses();
+      if (generateDialogSubmitButtonRef.current) {
+        generateDialogSubmitButtonRef.current.blur();
+      }
       setGenerateDialogOpen(false);
+      reset();
+      setTimeout(() => generateAnalysisButtonRef.current?.focus(), 0);
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to generate analysis');
     } finally {
@@ -192,6 +264,7 @@ export const AnalysisPage: React.FC = () => {
       {/* Generate Analysis Button */}
       <Box sx={{ mb: 3 }}>
         <Button
+          ref={generateAnalysisButtonRef}
           variant="contained"
           startIcon={<AnalyticsIcon />}
           onClick={() => setGenerateDialogOpen(true)}
@@ -242,44 +315,92 @@ export const AnalysisPage: React.FC = () => {
                       </Typography>
                     </Box>
                   </Box>
-                  <Box 
-                    display="flex" 
-                    gap={{ xs: 0.5, sm: 1 }}
-                    flexDirection={{ xs: 'row', md: 'row' }}
-                    justifyContent={{ xs: 'space-between', md: 'flex-end' }}
-                    alignItems="center"
-                    sx={{ minWidth: { xs: '100%', md: 'auto' } }}
+                  <Box
+                    display="flex"
+                    flexDirection={{ xs: 'column', sm: 'row' }}
+                    gap={{ xs: 1, sm: 1 }}
+                    alignItems={{ xs: 'flex-end', sm: 'center' }}
+                    justifyContent="flex-end"
+                    sx={{ minWidth: { xs: 'auto', md: 'auto' } }}
                   >
-                    <Chip
-                      label={analysis.type}
-                      color={getAnalysisTypeColor(analysis.type) as any}
-                      size="small"
-                      sx={{ 
-                        fontSize: { xs: '0.625rem', sm: '0.75rem' },
-                        height: { xs: '20px', sm: '24px' }
-                      }}
-                    />
                     <Button
                       size="small"
                       onClick={() => setSelectedAnalysis(analysis)}
                       variant="outlined"
-                      sx={{ 
+                      startIcon={<VisibilityIcon />}
+                      sx={{
                         fontSize: { xs: '0.625rem', sm: '0.75rem' },
-                        minWidth: { xs: '40px', sm: '60px' },
-                        px: { xs: 0.5, sm: 1 }
+                        minWidth: { xs: 'auto', sm: 'auto' },
+                        px: { xs: 1, sm: 1 }
                       }}
                     >
-                      View
+                      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>View Details</Box>
+                      <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>View</Box>
                     </Button>
+
+                    {/* Second Opinion Logic - Revised */}
+                    {analysis.type === 'nutrition' && !analysis.secondOpinionText && (
+                      <Box 
+                        display="flex" 
+                        flexDirection={{xs: 'column', sm: 'row'}} 
+                        gap={1} 
+                        alignItems={{xs: 'flex-end', sm: 'center'}}
+                        sx={{ minHeight: '31px' }}
+                      >
+                        {secondOpinionLoadingId === analysis._id ? (
+                          <CircularProgress size={24} sx={{ alignSelf: {xs: 'flex-end', sm: 'center'} }} />
+                        ) : showSecondOpinionControlsId === analysis._id ? (
+                          <FormControl size="small" sx={{ minWidth: { xs: 170, sm: 170 }, width: { xs: 'auto', sm: 'auto' } }} >
+                            <InputLabel id={`model-select-label-${analysis._id}`} sx={{fontSize: '0.75rem'}}>Select Model</InputLabel>
+                            <Select
+                              labelId={`model-select-label-${analysis._id}`}
+                              value={modelForSecondOpinion}
+                              label="Select Model"
+                              onChange={(e) => handleModelSelectForSecondOpinion(analysis._id, e.target.value)}
+                              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }}}
+                            >
+                              {secondOpinionModelChoices.map(model => (
+                                <MenuItem key={model.value} value={model.value} title={model.description} sx={{fontSize: '0.875rem'}}>
+                                  {model.label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        ) : (
+                          <Button
+                            size="small"
+                            onClick={() => handleShowSecondOpinionDropdown(analysis._id)}
+                            startIcon={<RateReviewIcon />}
+                            variant="outlined"
+                            color="secondary"
+                            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }}}
+                          >
+                            Get 2nd Opinion
+                          </Button>
+                        )
+                      }
+                    </Box>
+                    )}
+                    {analysis.type === 'nutrition' && analysis.secondOpinionText && (
+                       <Chip 
+                         label={`2nd Opinion: ${analysis.secondOpinionLlmModel}`} 
+                         size="small" 
+                         color="success" 
+                         variant="outlined" 
+                         sx={{fontSize: '0.7rem', alignSelf: {xs: 'flex-end', sm: 'center'}, border: '1px solid', borderColor: 'success.main', paddingTop: '2px', paddingBottom: '2px', lineHeight: '1.5', boxSizing: 'border-box'}}
+                       />
+                    )}
+
                     <Button
                       size="small"
                       color="error"
                       onClick={() => deleteAnalysis(analysis._id)}
                       variant="outlined"
-                      sx={{ 
+                      startIcon={<DeleteIcon />}
+                      sx={{
                         fontSize: { xs: '0.625rem', sm: '0.75rem' },
-                        minWidth: { xs: '30px', sm: '60px' },
-                        px: { xs: 0.5, sm: 1 }
+                        minWidth: { xs: 'auto', sm: 'auto' },
+                        px: { xs: 1, sm: 1 }
                       }}
                     >
                       <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
@@ -389,7 +510,17 @@ export const AnalysisPage: React.FC = () => {
       )}
 
       {/* Generate Analysis Dialog */}
-      <Dialog open={generateDialogOpen} onClose={() => setGenerateDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={generateDialogOpen} 
+        onClose={() => {
+         setGenerateDialogOpen(false);
+         reset();
+         setTimeout(() => generateAnalysisButtonRef.current?.focus(), 0);
+        }} 
+        maxWidth="sm" 
+        fullWidth
+        disableRestoreFocus={true}
+      >
         <DialogTitle>Generate New Analysis</DialogTitle>
         <form onSubmit={handleSubmit(generateAnalysis)}>
           <DialogContent>
@@ -441,8 +572,16 @@ export const AnalysisPage: React.FC = () => {
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setGenerateDialogOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="contained" disabled={generating}>
+            <Button onClick={() => {
+              setGenerateDialogOpen(false);
+              reset();
+            }}>Cancel</Button>
+            <Button 
+              ref={generateDialogSubmitButtonRef}
+              type="submit" 
+              variant="contained" 
+              disabled={generating}
+            >
               {generating ? <CircularProgress size={24} /> : 'Generate Analysis'}
             </Button>
           </DialogActions>
@@ -536,6 +675,22 @@ export const AnalysisPage: React.FC = () => {
                     ))}
                   </List>
                 </Box>
+
+                {/* Second Opinion in Dialog */}
+                {selectedAnalysis.secondOpinionText && (
+                  <>
+                    <Divider sx={{ my: 2 }} />
+                    <Box>
+                      <Typography variant="h6" gutterBottom>
+                        Second Opinion ({selectedAnalysis.secondOpinionLlmModel || 'LLM'})
+                      </Typography>
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+                        {selectedAnalysis.secondOpinionText}
+                      </Typography>
+                    </Box>
+                  </>
+                )}
+
               </Box>
             </DialogContent>
             <DialogActions>

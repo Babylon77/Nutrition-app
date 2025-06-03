@@ -4,6 +4,7 @@ import pdfParse from 'pdf-parse';
 import { logger } from '../utils/logger';
 import { ILabValue } from '../models/Bloodwork';
 import { aiService } from './aiService';
+import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
 export interface ParsedLabResult {
   labValues: ILabValue[];
@@ -134,7 +135,12 @@ IMPORTANT NOTES:
     `;
 
     try {
-      const response = await aiService.callOpenAI(prompt, 2500);
+      // Construct the messages array for aiService.callOpenAI
+      const messagesForOpenAI: ChatCompletionMessageParam[] = [
+        { role: 'system', content: 'You are an AI assistant specialized in extracting structured lab data from text and responding in JSON format.' },
+        { role: 'user', content: prompt } 
+      ];
+      const response = await aiService.callOpenAI(messagesForOpenAI, 2500);
       
       // Clean and parse the response
       let cleanedResponse = response.trim();

@@ -609,6 +609,7 @@ const FoodList: React.FC<FoodListProps> = ({
                 )}
               </Stack>
             }
+            secondaryTypographyProps={{ component: 'div' }}
           />
           
           <Box sx={{ 

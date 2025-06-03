@@ -9,6 +9,7 @@ import { SupplementIntake } from '../models/SupplementIntake';
 import { aiService } from '../services/aiService';
 import { asyncHandler, createError } from '../middleware/errorHandler';
 import { protect } from '../middleware/auth';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
@@ -23,7 +24,7 @@ const analysisRequestSchema = Joi.object({
 // @route   POST /api/analysis/nutrition
 // @access  Private
 router.post('/nutrition', protect, asyncHandler(async (req, res) => {
-  const { days = 7 } = req.body;
+  const { days = 7, getSecondOpinion = false } = req.body;
 
   const endDate = new Date();
   const startDate = new Date();
@@ -75,8 +76,17 @@ router.post('/nutrition', protect, asyncHandler(async (req, res) => {
     ? Math.floor((Date.now() - user.dateOfBirth.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
     : undefined;
 
-  // Prepare data for AI analysis
-  const analysisInput = {
+  // Helper function to calculate nutrition totals (defined before use)
+  const calculateNutritionTotal = (nutrient: string) => {
+    return foodLogs.reduce((total, log) => {
+      return total + log.foods.reduce((itemTotal, item) => {
+        return itemTotal + ((item as any)[nutrient] || 0);
+      }, 0);
+    }, 0);
+  };
+
+  // Prepare data for AI analysis (this will be our inputData)
+  const inputDataForAnalysis = {
     foodLogs,
     supplementRegimens,
     supplementIntakes,
@@ -92,24 +102,8 @@ router.post('/nutrition', protect, asyncHandler(async (req, res) => {
       weightGoal: user.weightGoal,
       weightGoalTimeframe: user.weightGoalTimeframe
     },
-    period: { days, actualDays, startDate, endDate }
-  };
-
-  // Helper function to calculate nutrition totals
-  const calculateNutritionTotal = (nutrient: string) => {
-    return foodLogs.reduce((total, log) => {
-      return total + log.foods.reduce((itemTotal, item) => {
-        return itemTotal + ((item as any)[nutrient] || 0);
-      }, 0);
-    }, 0);
-  };
-
-  // Generate AI analysis with comprehensive data
-  const aiResult = await aiService.analyzeNutrition({
-    foodLogs,
-    supplementRegimens,
-    supplementIntakes,
-    userProfile: analysisInput.userProfile,
+    period: { days, actualDays, startDate, endDate },
+    // Add calculated totals directly to the inputData object
     actualDays: actualDays,
     requestedDays: days,
     totalCalories: foodLogs.reduce((sum, log) => sum + log.totalCalories, 0),
@@ -124,12 +118,43 @@ router.post('/nutrition', protect, asyncHandler(async (req, res) => {
     totalVitaminC: calculateNutritionTotal('vitaminC'),
     totalIron: calculateNutritionTotal('iron'),
     dateRange: {
-      start: Math.min(...foodLogs.map(log => new Date(log.date).getTime())),
-      end: Math.max(...foodLogs.map(log => new Date(log.date).getTime()))
+      start: foodLogs.length > 0 ? Math.min(...foodLogs.map(log => new Date(log.date).getTime())) : null,
+      end: foodLogs.length > 0 ? Math.max(...foodLogs.map(log => new Date(log.date).getTime())) : null
     }
-  });
+  };
 
-  // Save analysis to database
+  // Generate AI analysis with the prepared comprehensive inputData
+  const aiResult = await aiService.analyzeNutrition(inputDataForAnalysis);
+
+  let secondOpinionResult = null;
+  if (getSecondOpinion) {
+    try {
+      const originalAnalysisDetailsForSecondOpinion = {
+        insights: aiResult.insights,
+        recommendations: aiResult.recommendations,
+        summary: aiResult.summary,
+        llmModel: aiResult.llmModel
+      };
+      // When getSecondOpinion is true on initial creation, let's default to a predefined second opinion model (e.g., Gemini via aiService.geminiModel)
+      // The aiService.geminiModel is currently 'gemini-1.5-flash-latest'
+      // We might want to make this choice more flexible later if needed for this specific route.
+      const defaultSecondOpinionModel = (aiService as any).geminiModel || 'gemini-1.5-flash-latest'; 
+
+      logger.info(`Requesting initial second opinion with model: ${defaultSecondOpinionModel}`);
+      secondOpinionResult = await aiService.getSecondOpinionAnalysis(
+        inputDataForAnalysis, 
+        originalAnalysisDetailsForSecondOpinion,
+        defaultSecondOpinionModel // Use the default model
+      );
+    } catch (error: any) {
+      // Log the error but don't let it break the primary analysis saving/response
+      logger.error('Failed to get second opinion during initial analysis creation:', { message: error.message });
+      // Set to null so primary analysis can still be saved
+      secondOpinionResult = null; 
+    }
+  }
+
+  // Save analysis to database, including the inputDataForAnalysis
   const analysis = await Analysis.create({
     userId: req.user.id,
     type: 'nutrition',
@@ -140,6 +165,9 @@ router.post('/nutrition', protect, asyncHandler(async (req, res) => {
     summary: aiResult.summary,
     detailedAnalysis: aiResult.detailedAnalysis,
     llmModel: aiResult.llmModel,
+    inputData: inputDataForAnalysis, // Save the full input data
+    secondOpinionText: secondOpinionResult?.secondOpinionText,
+    secondOpinionLlmModel: secondOpinionResult?.llmModel,
     nutritionData: {
       totalCalories: foodLogs.reduce((sum, log) => sum + log.totalCalories, 0),
       macronutrients: {
@@ -153,9 +181,16 @@ router.post('/nutrition', protect, asyncHandler(async (req, res) => {
     }
   });
 
+  // Ensure the created analysis object (which is returned) includes the second opinion fields if they were set
+  const analysisObject = analysis.toObject();
+  if (secondOpinionResult) {
+    analysisObject.secondOpinionText = secondOpinionResult.secondOpinionText;
+    analysisObject.secondOpinionLlmModel = secondOpinionResult.llmModel;
+  }
+
   res.status(201).json({
     success: true,
-    data: analysis
+    data: analysisObject
   });
 }));
 
@@ -504,6 +539,75 @@ router.delete('/:id', protect, asyncHandler(async (req, res) => {
     success: true,
     message: 'Analysis deleted successfully'
   });
+}));
+
+// @desc    Get second opinion for an existing nutrition analysis
+// @route   PATCH /api/analysis/:id/second-opinion
+// @access  Private
+router.patch('/:id/second-opinion', protect, asyncHandler(async (req, res) => {
+  const analysisId = req.params.id;
+  const userId = req.user.id;
+  const { secondOpinionModel } = req.body; // Get the requested model from the request body
+
+  if (!secondOpinionModel) {
+    throw createError('A model for the second opinion (secondOpinionModel) must be specified.', 400);
+  }
+
+  const analysis = await Analysis.findOne({ _id: analysisId, userId: userId });
+
+  if (!analysis) {
+    throw createError('Analysis not found', 404);
+  }
+
+  if (analysis.type !== 'nutrition') {
+    throw createError('Second opinion is currently only supported for nutrition analyses.', 400);
+  }
+
+  if (!analysis.inputData) {
+    throw createError('Cannot generate second opinion: Original input data not found for this analysis. This may be an older analysis created before this feature was available.', 400);
+  }
+
+  // Prevent re-generating if a second opinion already exists with the *same model*.
+  // If you want to allow re-generating with a different model, this logic might need adjustment
+  // or simply allow overwriting by removing this check.
+  if (analysis.secondOpinionText && analysis.secondOpinionLlmModel === secondOpinionModel) {
+    logger.info(`Second opinion with model ${secondOpinionModel} already exists for analysis ${analysisId}. Returning existing data.`);
+    return res.status(200).json({
+      success: true,
+      message: `Second opinion with model ${secondOpinionModel} already exists.`, // Updated message
+      data: analysis.toObject()
+    });
+  }
+
+  try {
+    const originalAnalysisDetails = {
+      insights: analysis.insights,
+      recommendations: analysis.recommendations,
+      summary: analysis.summary,
+      llmModel: analysis.llmModel
+    };
+
+    const secondOpinionResult = await aiService.getSecondOpinionAnalysis(
+      analysis.inputData, 
+      originalAnalysisDetails,
+      secondOpinionModel // Pass the requested model
+    );
+
+    analysis.secondOpinionText = secondOpinionResult.secondOpinionText;
+    analysis.secondOpinionLlmModel = secondOpinionResult.llmModel; // This will be the model actually used (e.g. specific Gemini or OpenAI model)
+    analysis.updatedAt = new Date();
+
+    await analysis.save();
+
+    res.status(200).json({
+      success: true,
+      data: analysis.toObject()
+    });
+
+  } catch (error: any) {
+    logger.error(`Failed to get second opinion for analysis ${analysisId} with model ${secondOpinionModel}:`, { message: error.message });
+    throw createError(`Failed to generate second opinion with ${secondOpinionModel}: ${error.message}`, 500);
+  }
 }));
 
 export default router; 

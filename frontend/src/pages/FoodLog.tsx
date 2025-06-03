@@ -47,6 +47,8 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useForm, Controller } from 'react-hook-form';
 import { SmartFoodEntry } from '../components/SmartFoodEntry';
 import CompactNutritionSummary from '../components/visualizations/CompactNutritionSummary'; // Import the new component
+import { useAuth } from '../contexts/AuthContext'; // Added import
+import { User } from '../types'; // Added import for User type
 
 interface EnhancedNutrition {
   // Macronutrients
@@ -118,68 +120,113 @@ interface AddFoodFormData {
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snacks';
 }
 
-// Recommended Daily Values (simplified - ideally would come from user profile)
-const getRecommendedDailyValues = () => ({
-  // Macronutrients (example for adult male, 2000 cal diet)
-  calories: 2000,
-  protein: 50, // 10-35% of calories
-  carbs: 300, // 45-65% of calories  
-  fat: 67, // 20-35% of calories
-  fiber: 25,
-  sugar: 50, // <10% calories
-  
-  // Minerals (mg except where noted)
-  sodium: 2300, // Upper limit
-  potassium: 3500,
-  calcium: 1000,
-  magnesium: 400,
-  phosphorus: 700,
-  iron: 8,
-  zinc: 11,
-  selenium: 55, // mcg
-  
-  // Vitamins
-  vitaminA: 900, // mcg
-  vitaminC: 90, // mg
-  vitaminD: 15, // mcg
-  vitaminE: 15, // mg
-  vitaminK: 120, // mcg
-  thiamin: 1.2, // mg
-  riboflavin: 1.3, // mg
-  niacin: 16, // mg
-  vitaminB6: 1.3, // mg
-  folate: 400, // mcg
-  vitaminB12: 2.4, // mcg
-  biotin: 30, // mcg
-  pantothenicAcid: 5, // mg
-  
-  // Fats (mg)
-  omega3: 1600, // ALA + EPA/DHA
-  omega6: 15000, // Rough estimate - 6-10% of calories
-  saturatedFat: 22, // <10% calories (g)
-  transFat: 0, // avoid
-  
-  // Special
-  cholesterol: 300, // mg upper limit
-  creatine: 3, // g (for those who supplement)
-});
+// New getRecommendedDailyValues function (replaces the old one)
+const getRecommendedDailyValues = (user: User | null) => {
+  let targetCalories = 2000;
+  let proteinGoal = 50;
+  let carbGoal = 300;
+  let fatGoal = 67;
 
-const getNutrientColor = (current: number, recommended: number, isUpperLimit: boolean = false): 'success' | 'warning' | 'error' | 'default' => {
-  if (isUpperLimit) {
-    // For nutrients where less is better (sodium, saturated fat, trans fat)
-    if (current > recommended) return 'error';
-    if (current > recommended * 0.8) return 'warning';
-    return 'success';
-  } else {
-    // For nutrients where more is generally better
-    if (current >= recommended) return 'success';
-    if (current >= recommended * 0.7) return 'warning';
-    return 'error';
+  if (user && user.weight && user.height && user.gender && user.activityLevel && user.dateOfBirth) {
+    const age = Math.floor((Date.now() - new Date(user.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    let bmr: number;
+    if (user.gender === 'male') {
+      bmr = 10 * user.weight + 6.25 * user.height - 5 * age + 5;
+    } else { // female or other
+      bmr = 10 * user.weight + 6.25 * user.height - 5 * age - 161;
+    }
+    // Use Dashboard's conservative activity multipliers
+    const activityMultipliers = {
+      sedentary: 1.15,
+      lightly_active: 1.3,
+      moderately_active: 1.45,
+      very_active: 1.6,
+      extra_active: 1.75 
+    };
+    const maintenanceCalories = bmr * activityMultipliers[user.activityLevel];
+    targetCalories = maintenanceCalories;
+
+    if (user.weightGoal && user.weightGoalTimeframe && user.weightGoalTimeframe > 0) {
+        const currentWeightLbs = user.weight * 2.20462;
+        const weightGoalLbs = user.weightGoal; 
+        const weightChangeLbs = currentWeightLbs - weightGoalLbs;
+        const weeklyTargetChangeLbs = weightChangeLbs / user.weightGoalTimeframe;
+        
+        // Cap weekly change at 3 lbs/week (gain or loss)
+        const absWeeklyTargetChange = Math.abs(weeklyTargetChangeLbs);
+        const cappedAbsWeeklyChange = Math.min(absWeeklyTargetChange, 3);
+        const safeWeeklyChangeLbs = cappedAbsWeeklyChange * Math.sign(weeklyTargetChangeLbs);
+        
+        const dailyCalorieAdjustment = (safeWeeklyChangeLbs * 3500) / 7;
+        targetCalories = Math.round(maintenanceCalories - dailyCalorieAdjustment);
+    }
+    const minimumCalories = user.gender === 'male' ? 1500 : 1200;
+    targetCalories = Math.max(targetCalories, minimumCalories);
+
+    let proteinPerKg = 1.6;
+    if (user.healthGoals?.includes('build_muscle')) proteinPerKg = 2.0;
+    proteinGoal = Math.round(user.weight * proteinPerKg);
+    const fatCalories = targetCalories * 0.25; // 25% from fat
+    fatGoal = Math.round(fatCalories / 9);
+    const carbCalories = targetCalories - (proteinGoal * 4) - (fatGoal * 9);
+    carbGoal = Math.round(carbCalories / 4);
   }
+  return {
+    calories: targetCalories, protein: proteinGoal, carbs: carbGoal, fat: fatGoal, fiber: 25,
+    sugar: Math.round(targetCalories * 0.1 / 4), saturatedFat: Math.round(targetCalories * 0.1 / 9), transFat: 0, cholesterol: 300,
+    sodium: 2300, potassium: 3500, calcium: 1000, magnesium: 400, phosphorus: 700,
+    iron: user?.gender === 'female' ? 18 : 8, zinc: user?.gender === 'female' ? 8 : 11, selenium: 55,
+    vitaminA: user?.gender === 'female' ? 700 : 900, vitaminC: user?.gender === 'female' ? 75 : 90, vitaminD: 15, vitaminE: 15,
+    vitaminK: user?.gender === 'female' ? 90 : 120, thiamin: 1.1, riboflavin: 1.1, niacin: 14, vitaminB6: 1.3,
+    folate: 400, vitaminB12: 2.4, biotin: 30, pantothenicAcid: 5,
+    omega3: 1600, omega6: 15000,
+    creatine: user?.healthGoals?.includes('build_muscle') || user?.healthGoals?.includes('strength_training') ? 3000 : 0,
+  };
 };
 
-const getNutrientColorStyle = (current: number, recommended: number, isUpperLimit: boolean = false) => {
-  const color = getNutrientColor(current, recommended, isUpperLimit);
+// Modified getNutrientColor function
+const getNutrientColor = (
+  nutrientName: string,
+  current: number,
+  recommended: number,
+  goalStatus: 'lose' | 'gain' | 'maintain' | null,
+  isUpperLimit: boolean = false
+): 'success' | 'warning' | 'error' | 'default' => {
+  if (nutrientName === 'calories' && goalStatus) {
+    const calorieRatio = recommended > 0 ? current / recommended : 0;
+    if (goalStatus === 'lose') {
+      if (calorieRatio > 1.05) return 'error'; // More than 5% over target
+      if (calorieRatio > 1.0) return 'warning';   // At or slightly over target (up to 5%)
+      // if (calorieRatio < 0.85) return 'warning'; // Optional: significantly under might be a warning too
+      return 'success'; // At or under target (and not significantly under if warning above is active)
+    } else if (goalStatus === 'gain') {
+      if (calorieRatio < 0.90) return 'error'; // More than 10% under target
+      if (calorieRatio < 1.0) return 'warning';   // Under target (up to 10%)
+      return 'success'; // At or over target
+    } else { // maintain
+      if (calorieRatio > 1.1 || calorieRatio < 0.9) return 'warning'; // +/- 10% from target
+      return 'success'; // Within +/- 10% of target
+    }
+  }
+
+  if (isUpperLimit) {
+    if (current > recommended) return 'error';
+    if (current > recommended * 0.8 && recommended > 0) return 'warning'; // Avoid division by zero if recommended is 0
+    return 'success';
+  }
+
+  // Default logic for nutrients where more is generally better (or no specific goalStatus applies)
+  if (recommended === 0) return current > 0 ? 'warning' : 'default'; // If goal is 0, any intake is a warning or default
+  const ratio = current / recommended;
+  if (ratio >= 1) return 'success';
+  if (ratio >= 0.7) return 'warning';
+  return 'error';
+};
+
+// getNutrientColorStyle might need to be updated if its direct calls to getNutrientColor change significantly
+// For now, assuming it's mainly for individual nutrient chips, not the summary display
+const getNutrientColorStyle = (nutrientName: string, current: number, recommended: number, goalStatus: 'lose' | 'gain' | 'maintain' | null, isUpperLimit: boolean = false) => {
+  const color = getNutrientColor(nutrientName, current, recommended, goalStatus, isUpperLimit);
   switch (color) {
     case 'success':
       return { 
@@ -205,6 +252,7 @@ const getNutrientColorStyle = (current: number, recommended: number, isUpperLimi
 };
 
 export const FoodLog: React.FC = () => {
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [foodItems, setFoodItems] = useState<EnhancedFoodItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -217,6 +265,9 @@ export const FoodLog: React.FC = () => {
   const [editQuantity, setEditQuantity] = useState('');
   const [editUnit, setEditUnit] = useState('');
   const [expandedNutrition, setExpandedNutrition] = useState<Set<number>>(new Set());
+
+  // State for personalized recommended daily values
+  const [personalizedRdvs, setPersonalizedRdvs] = useState(() => getRecommendedDailyValues(null));
 
   const { register, handleSubmit, reset, setValue, watch, getValues, formState: { errors } } = useForm<AddFoodFormData>({
     defaultValues: {
@@ -759,7 +810,32 @@ export const FoodLog: React.FC = () => {
   };
 
   const totalNutrition = calculateTotalNutrition();
-  const rdv = getRecommendedDailyValues();
+  
+  // Determine user's weight goal status - MOVED EARLIER & CORRECTED
+  let userWeightGoalStatus: 'lose' | 'gain' | 'maintain' | null = null;
+  if (user && typeof user.weight === 'number' && user.weightGoal !== undefined && user.weightGoal !== null) {
+    const weightInKg = user.weight;
+    const weightGoalInKg = user.weightGoal * 0.453592; // Convert lbs (user.weightGoal) to kg
+    const tolerance = weightInKg * 0.01; // 1% tolerance for maintain
+
+    if (weightGoalInKg < weightInKg - tolerance) {
+      userWeightGoalStatus = 'lose';
+    } else if (weightGoalInKg > weightInKg + tolerance) {
+      userWeightGoalStatus = 'gain';
+    } else {
+      userWeightGoalStatus = 'maintain';
+    }
+  } else if (user) {
+    userWeightGoalStatus = 'maintain'; // Default to maintain if goal not fully set
+  }
+
+  // Calculate calorie color AFTER userWeightGoalStatus is defined
+  const calorieColorForSummary = getNutrientColor(
+    'calories',
+    totalNutrition.calories,
+    personalizedRdvs.calories,
+    userWeightGoalStatus // Now defined
+  );
 
   const renderMealSection = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snacks', title: string) => {
     const mealItems = getMealItems(mealType);
@@ -986,7 +1062,7 @@ export const FoodLog: React.FC = () => {
                                   sx={{ 
                                     fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
                                     height: { xs: '20px', sm: '24px' },
-                                    ...getNutrientColorStyle(item.nutrition.saturatedFat, rdv.saturatedFat, true)
+                                    ...getNutrientColorStyle('saturatedFat', item.nutrition.saturatedFat, personalizedRdvs.saturatedFat, userWeightGoalStatus, true)
                                   }}
                                 />
                               )}
@@ -1003,7 +1079,7 @@ export const FoodLog: React.FC = () => {
                                   sx={{ 
                                     fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
                                     height: { xs: '20px', sm: '24px' },
-                                    ...getNutrientColorStyle(item.nutrition.omega3, rdv.omega3)
+                                    ...getNutrientColorStyle('omega3', item.nutrition.omega3, personalizedRdvs.omega3, userWeightGoalStatus, false)
                                   }}
                                 />
                               )}
@@ -1030,7 +1106,7 @@ export const FoodLog: React.FC = () => {
                                   sx={{ 
                                     fontSize: { xs: '0.625rem', sm: '0.75rem' }, 
                                     height: { xs: '20px', sm: '24px' },
-                                    ...getNutrientColorStyle(item.nutrition.cholesterol, rdv.cholesterol, true)
+                                    ...getNutrientColorStyle('cholesterol', item.nutrition.cholesterol, personalizedRdvs.cholesterol, userWeightGoalStatus, true)
                                   }}
                                 />
                               )}
@@ -1114,6 +1190,11 @@ export const FoodLog: React.FC = () => {
     return 'snacks';
   };
 
+  useEffect(() => {
+    // Update RDVs when user profile changes
+    setPersonalizedRdvs(getRecommendedDailyValues(user));
+  }, [user]);
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
@@ -1153,7 +1234,8 @@ export const FoodLog: React.FC = () => {
         {foodItems.length > 0 && (
           <CompactNutritionSummary 
             totalNutrition={calculateTotalNutrition()} 
-            recommendedValues={getRecommendedDailyValues()} 
+            recommendedValues={personalizedRdvs} 
+            calorieDisplayColor={calorieColorForSummary === 'default' ? undefined : calorieColorForSummary}
           />
         )}
 

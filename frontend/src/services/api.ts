@@ -225,6 +225,12 @@ class ApiService {
     await this.api.delete(`/analysis/${id}`);
   }
 
+  async getSecondOpinion(analysisId: string, secondOpinionModel: string): Promise<Analysis> {
+    const response: AxiosResponse<ApiResponse<Analysis>> = 
+      await this.api.patch(`/analysis/${analysisId}/second-opinion`, { secondOpinionModel });
+    return response.data.data!;
+  }
+
   // Development only - delete test users
   async deleteTestUser(email: string): Promise<{ message: string; deletedCount: number }> {
     const response = await this.api.delete(`/auth/delete-test-user/${email}`);
@@ -377,6 +383,9 @@ export const analysis = {
 
   // Get analysis models
   getAnalysisModels: () => apiService.getAnalysisModels(),
+
+  getSecondOpinion: (analysisId: string, secondOpinionModel: string) => 
+    apiService.getSecondOpinion(analysisId, secondOpinionModel),
 };
 
 export const supplements = {

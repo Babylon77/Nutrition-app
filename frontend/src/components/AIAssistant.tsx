@@ -60,7 +60,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
     if (messages.length === 0) {
       const welcomeMessage: Message = {
         id: Date.now().toString(),
-        text: "Hi! I'm your Fuel IQ AI assistant. I can help you with:\n\n• Questions about using the app\n• Nutrition and health guidance\n• Interpreting your food logs and analysis\n• General wellness advice\n\nWhat would you like to know?",
+        text: "Hi! I'm your Fuel IQ AI assistant. I can help you with:\n\n• Questions about using the app\n• Nutrition and health guidance\n• Interpreting your food logs and analysis\n• Log your meals by telling me what you ate (e.g., \"log 1 apple and a banana for breakfast\")\n• General wellness advice\n\nWhat would you like to know?",
         isUser: false,
         timestamp: new Date(),
         type: 'general',
@@ -283,6 +283,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
             sx={{
               flex: 1,
               overflowY: 'auto',
+              minHeight: 0,
               p: 2,
               display: 'flex',
               flexDirection: 'column',
@@ -296,13 +297,15 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
                   display: 'flex',
                   justifyContent: message.isUser ? 'flex-end' : 'flex-start',
                   mb: 1,
+                  overflow: 'visible',
                 }}
               >
                 <Paper
                   sx={{
                     p: 2,
                     maxWidth: '85%',
-                    minWidth: '120px',
+                    minWidth: 0,
+                    height: 'auto',
                     backgroundColor: message.isUser
                       ? 'var(--color-primary-blue)'
                       : '#ffffff',
@@ -410,7 +413,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask about the app, nutrition, or health..."
+                placeholder="Ask a question or log food (e.g., 'log an apple')..."
                 variant="outlined"
                 size="small"
                 disabled={isLoading}

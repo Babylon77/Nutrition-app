@@ -167,8 +167,8 @@ export const Dashboard: React.FC = () => {
     const weightChange = currentWeightLbs - user.weightGoal;
     const weeklyWeightChange = weightChange / user.weightGoalTimeframe;
     
-    // Cap weekly weight loss at 2 lbs/week for safety (recommended maximum)
-    const safeWeeklyWeightChange = Math.min(Math.abs(weeklyWeightChange), 2) * Math.sign(weeklyWeightChange);
+    // Cap weekly weight loss at 3 lbs/week for safety (recommended maximum)
+    const safeWeeklyWeightChange = Math.min(Math.abs(weeklyWeightChange), 3) * Math.sign(weeklyWeightChange);
     
     // 1 pound = ~3500 calories, so daily calorie adjustment
     const dailyCalorieAdjustment = (safeWeeklyWeightChange * 3500) / 7;
@@ -179,6 +179,31 @@ export const Dashboard: React.FC = () => {
     const minimumCalories = user.gender === 'male' ? 1500 : 1200;
     
     return Math.max(suggestedCalories, minimumCalories);
+  };
+
+  const getPersonalizedMacroGoals = (suggestedCalories: number | null, currentUser: typeof user | null) => {
+    if (!suggestedCalories || !currentUser || !currentUser.weight) {
+      return { protein: 2000 * 0.15 / 4, carbs: 2000 * 0.55 / 4, fat: 2000 * 0.30 / 9 }; // Default fallback if no data
+    }
+
+    let proteinPerKg = 1.6;
+    if (currentUser.healthGoals?.includes('build_muscle')) {
+      proteinPerKg = 2.0;
+    }
+    const proteinGoal = Math.round(currentUser.weight * proteinPerKg);
+
+    const fatCalories = suggestedCalories * 0.25; // 25% of target calories from fat
+    const fatGoal = Math.round(fatCalories / 9);
+
+    const proteinCalories = proteinGoal * 4;
+    const carbCalories = suggestedCalories - proteinCalories - fatCalories;
+    const carbGoal = Math.round(carbCalories / 4);
+
+    return {
+      protein: proteinGoal,
+      carbs: carbGoal,
+      fat: fatGoal,
+    };
   };
 
   const getProgressColor = (percentage: number) => {
@@ -281,15 +306,15 @@ export const Dashboard: React.FC = () => {
                       data={{
                         protein: { 
                           current: Math.round(nutritionSummary.totalProtein), 
-                          goal: Math.round((nutritionSummary.totalCalories * 0.25) / 4) // 25% of calories from protein
+                          goal: getPersonalizedMacroGoals(getSuggestedCalories(), user).protein
                         },
                         carbs: { 
                           current: Math.round(nutritionSummary.totalCarbs), 
-                          goal: Math.round((nutritionSummary.totalCalories * 0.45) / 4) // 45% of calories from carbs
+                          goal: getPersonalizedMacroGoals(getSuggestedCalories(), user).carbs
                         },
                         fat: { 
                           current: Math.round(nutritionSummary.totalFat), 
-                          goal: Math.round((nutritionSummary.totalCalories * 0.30) / 9) // 30% of calories from fat
+                          goal: getPersonalizedMacroGoals(getSuggestedCalories(), user).fat
                         }
                       }}
                       height="md"
@@ -411,6 +436,8 @@ export const Dashboard: React.FC = () => {
                         <TrendingUpIcon color="primary" />
                       </ListItemIcon>
                       <ListItemText
+                        primaryTypographyProps={{ component: 'div' }}
+                        secondaryTypographyProps={{ component: 'div' }}
                         primary={
                           <Box display="flex" alignItems="center" gap={1}>
                             <Typography variant="subtitle2">

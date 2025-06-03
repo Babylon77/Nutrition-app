@@ -17,7 +17,7 @@
 - [ ] **Supplements Tracking**: No separate section for daily supplements, vitamins, medications
 
 ### Health Analytics Limitations
-- [ ] **Single LLM Analysis**: No second opinion or cross-model validation
+- ✅ **Single LLM Analysis**: No second opinion or cross-model validation → **COMPLETED (Sprint 3.1)**
 - [ ] **Limited Biomarkers**: Missing key hormones (Testosterone, etc.)
 - [ ] **Manual PDF Processing**: No LLM-powered extraction from bloodwork PDFs
 - [ ] **Basic Health Metrics UI**: Manual entry not intuitive enough
@@ -25,6 +25,7 @@
 - [ ] **No Lifestyle Tracking**: No alcohol, smoking, or other lifestyle factor tracking
 - [ ] **No Health Metrics History**: No historical tracking and trend analysis
 - [ ] **No Educational Context**: No links to research, debates, expert perspectives
+- ✅ **AI Data Context**: AI assistant lacked full access to user data and app context for optimal advice. → **COMPLETED (Sprint 3.1)**
 
 ### UX/UI Limitations
 - ✅ **Mobile Experience**: Basic responsive design (needs mobile-first approach) → **COMPLETED (Sprint 1)**
@@ -38,11 +39,13 @@
   - ✅ Contextual help buttons per page
   - ✅ Auto-triggers for first-time users
   - ✅ Feature-specific tutorials (food entry, analytics, bloodwork)
+  - ✅ Tutorial content now part of AI Assistant context. → **COMPLETED (Sprint 3.1)**
 - [ ] **Food Search**: Could be more intuitive with autocomplete/suggestions
 - [ ] **Progress Visualization**: Basic charts (could be more engaging)
 - [ ] **Goal Setting**: Limited customization options
 - [ ] **Notification System**: No reminders or alerts
-- [ ] **AI Recommendation Actions**: Can't save/highlight LLM suggestions into actionable checklist
+- ✅ **AI Recommendation Actions**: Can't save/highlight LLM suggestions into actionable checklist → Partially addressed by conversational food logging. (AI can log food, future work for generic action items). **(Food logging COMPLETED - Sprint 3.1)**
+- ✅ **AI Assistant UX**: Output format needed improvement for readability. → **COMPLETED (Sprint 3.1)**
 
 ### Technical Limitations
 - [ ] **API Dependency**: Relies on OpenAI API (cost/rate limits/availability)
@@ -76,19 +79,22 @@
 - [ ] **User Food Adjustments** - Allow quantity/serving size adjustments with proportional scaling
 - [ ] **Mobile-First UI Redesign** - Optimize for mobile devices
 - [ ] **Micronutrient Display Cleanup** - Condensed, scannable format
+- ✅ **Conversational Food Logging (AI Assistant)** - Log food via AI chat. → **COMPLETED (Sprint 3.1)**
 
 #### Core UX Improvements  
 - [ ] **Supplements Section** - Separate tracking for daily supplements, vitamins, medications
-- [ ] **AI Recommendation Actions** - Save/highlight LLM suggestions into master checklist
+- [ ] **AI Recommendation Actions** - Save/highlight LLM suggestions into master checklist (General action items TBD)
 - [ ] **Enhanced Health Metrics UI** - More intuitive manual entry for biomarkers
+- ✅ **AI Assistant UX/Readability** - Improved output formatting. → **COMPLETED (Sprint 3.1)**
 
 #### Advanced Analytics Features
-- [ ] **Multi-LLM Second Opinion** - Cross-validate analysis with Grok/Gemini vs ChatGPT
+- ✅ **Multi-LLM Second Opinion** - Cross-validate analysis with Gemini vs ChatGPT → **COMPLETED (Sprint 3.1)**
 - [ ] **LLM-Powered PDF Extraction** - Automated bloodwork data extraction and formatting
 - [ ] **Expanded Biomarker Support** - Add Testosterone and other key hormones
 - [ ] **Sleep Integration** - Connect sleep data for comprehensive health correlation (Huberman/Johnson inspired)
 - [ ] **Lifestyle Factor Tracking** - Manual alcohol consumption, smoking, substance tracking
 - [ ] **Health Metrics History** - Historical tracking with trend analysis and correlations
+- ✅ **AI Assistant Full Data Access** - Provide AI with food logs, personal foods, supplements, bloodwork, app context. → **COMPLETED (Sprint 3.1)**
 
 ### Medium Priority (V2 Features)
 *Valuable additions that enhance but don't fundamentally change core experience*
@@ -269,12 +275,12 @@
 ## Recent Debugging & Fixes (Post-Sprint 2.5) 🛠️
 
 ### v1.0.4 - Render Stability & Data Integrity (06/01/2025)
-- **Fixed: Production Session Store**: Resolved `connect.session() MemoryStore` warning by integrating `connect-mongo` for persistent MongoDB session storage on Render.
-- **Fixed: Food Queue Processing on Render**:
-    - Addressed race condition where food queue appeared empty on backend by initially adding explicit `req.session.save()`.
-    - Revised to a more robust stateless approach: frontend now sends the entire current queue to the backend `process_queue` endpoint, eliminating reliance on session state for this volatile data.
-- **Fixed: Render Build Fallthrough Error**: Corrected TypeScript error `TS7029: Fallthrough case in switch` in `backend/src/routes/food.ts` by adding a `break;` statement.
-- **Addressed: API Rate Limiting on Render**:
+- ✅ **Fixed: Production Session Store**: Resolved `connect.session() MemoryStore` warning by integrating `connect-mongo` for persistent MongoDB session storage on Render. This was a foundational step for session reliability.
+- ✅ **Fixed: Food Queue Processing on Render (Evolution)**:
+    - ✅ Initial attempts to stabilize the session-based food queue on Render included adding explicit `req.session.save()` calls after queue modifications in the backend.
+    - ✅ While this provided some improvement, persistent issues with queue items being overwritten on Render led to a more comprehensive solution: a full refactor to client-side queue management. This involved making the backend stateless for queue building and having the frontend send the complete queue for processing (detailed as Sprint 2.75 in `SPRINT_ROADMAP.md`). This ultimately resolved the queue stability problems.
+- ✅ **Fixed: Render Build Fallthrough Error**: Corrected TypeScript error `TS7029: Fallthrough case in switch` in `backend/src/routes/food.ts` by adding a `break;` statement.
+- ✅ **Addressed: API Rate Limiting on Render**:
     - Temporarily increased backend rate limits and frontend debounce time for `SmartFoodEntry` search.
     - Implemented client-side caching for personal food search results in `SmartFoodEntry.tsx` as a long-term optimization to reduce API calls.
 - **Fixed: Calorie Meter & Food Log Date Discrepancies (Local & Render)**: Ensured consistent `YYYY-MM-DD` string handling for `FoodLog.date` in backend queries (`/api/food/summary`, `/api/food/logs/:date`) and storage, resolving issues where "today's" foods weren't correctly reflected due to timezone/date object mismatches.

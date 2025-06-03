@@ -28,6 +28,8 @@ The heart of Fuel IQ's intelligence lies in its ability to understand how people
 
 **Progressive Learning**: The system builds a personal food database for each user, learning their language patterns, preferred brands, and typical portion sizes. When someone consistently logs "my usual breakfast," the system recognizes this pattern and can automatically suggest the appropriate foods based on historical data.
 
+**Multi-LLM Second Opinion Capability**: For nutrition and health analyses, Fuel IQ now incorporates a multi-LLM approach. Users can request a "second opinion" on an existing analysis from an alternative Large Language Model (e.g., Google's Gemini series, in addition to OpenAI models). The system retrieves the original input data for the analysis and sends it to the selected secondary LLM. It then performs a comparative analysis, presenting both the independent findings of the second LLM and a report highlighting similarities and differences from the primary analysis. This enhances the robustness and reliability of insights by offering diverse AI perspectives.
+
 ### Supplement Intelligence Integration
 
 Supplement tracking presents unique challenges because users describe supplements inconsistently and dosage timing is critical for adherence tracking.
@@ -76,9 +78,19 @@ The backend orchestrates complex data flows that transform raw user inputs into 
 
 **Real-Time Analysis Pipeline**: When users submit food descriptions, the system first checks their personal food database for exact matches, reducing AI API calls and improving response speed. If no match exists, the request routes to the AI service with user context included to improve analysis accuracy.
 
-**Nutrition Calculation Engine**: The system converts AI-analyzed foods into precise nutrition data by handling unit conversions, portion scaling, and micronutrient calculations. It validates results against known ranges and flags unusual values for review, ensuring data quality remains high.
+**Nutrition Calculation Engine**: The system converts AI-analyzed foods into precise nutrition data by handling unit conversions, portion scaling, and micronutrient calculations. It validates results against known ranges and flags unusual values for review, ensuring data quality remains high. The calculation of daily calorie and macronutrient goals (protein, carbohydrates, fat) has been standardized across different application sections (e.g., Dashboard, Food Log) to ensure consistency. This involves using consistent activity multipliers, safe weight change caps, and defined logic for macro derivation (e.g., protein based on body weight, fat as a percentage of target calories, carbohydrates as the remainder).
 
 **Aggregation and Trend Analysis**: Background processes continuously calculate daily nutrition totals, weekly trends, and goal achievement metrics. These calculations update in real-time as users log foods, providing immediate feedback on nutrition status throughout the day.
+
+### AI Assistant Subsystem
+
+Fuel IQ includes an AI Assistant designed to provide conversational support, insights, and actions. The assistant's capabilities are integrated throughout the application.
+
+**Conversational Food Logging**: Users can interact with the AI Assistant to log food items using natural language commands (e.g., "Log 2 eggs and a slice of toast for breakfast"). The assistant parses these commands, confirms details if necessary, and then directly adds the food items to the user's daily log, leveraging the same AI food analysis pipeline used for manual entries.
+
+**Expanded Data Context & App Knowledge**: The AI Assistant now has comprehensive access to the user's data, including food logs, personal food items, supplement logs, and bloodwork results. Furthermore, its knowledge base includes information about the app's functionality, features, and usage guidelines (derived from `README.md`, `ALGORITHM_DESCRIPTION.md`, and `TUTORIAL_CONTENT.md`). This expanded context allows the assistant to provide more personalized, accurate, and helpful responses, understand user queries better, and guide users on how to use the app effectively.
+
+**Improved Readability and UX**: The AI Assistant's output has been redesigned for better readability and user experience on both mobile and desktop platforms, incorporating clearer typography and spacing.
 
 ### Background Task Management
 

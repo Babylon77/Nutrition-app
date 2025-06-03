@@ -273,13 +273,13 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 
 ---
 
-## **SPRINT 2.75: Client-Side Queue Refactor** 
+## **SPRINT 2.75: Client-Side Queue Refactor** ✅ **COMPLETED**
 *Priority: CRITICAL | Duration: 0.5 week | Based on Render Stability Issues*
 
 ### **Goals**
-- Resolve food queue overwriting issue on Render by making queue management fully client-side.
-- Achieve true statelessness for the queue-building process in the backend.
-- Improve application robustness and predictability in a multi-instance environment.
+- ✅ Resolve food queue overwriting issue on Render by making queue management fully client-side.
+- ✅ Achieve true statelessness for the queue-building process in the backend.
+- ✅ Improve application robustness and predictability in a multi-instance environment.
 
 ### **Rationale**
 - Persistent issues with `req.session.foodQueue` not reliably persisting between requests on Render when using `connect-mongo`, leading to items being overwritten.
@@ -287,29 +287,29 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 
 ### **Key Changes**
 - **Frontend (`SmartFoodEntry.tsx`)**:
-  - The component will now manage the food queue entirely in its local React state.
-  - Functions `addToQueue`, `removeFromQueue`, `clearQueue` will modify this local state directly, without API calls for these actions.
-  - A unique client-side ID will be generated for each queued item.
-  - The `loadQueue` function (previously fetching from session) will be removed.
-  - The `processQueue` function will send the complete, client-managed queue to the backend.
+  - ✅ The component will now manage the food queue entirely in its local React state.
+  - ✅ Functions `addToQueue`, `removeFromQueue`, `clearQueue` will modify this local state directly, without API calls for these actions.
+  - ✅ A unique client-side ID will be generated for each queued item.
+  - ✅ The `loadQueue` function (previously fetching from session) will be removed.
+  - ✅ The `processQueue` function will send the complete, client-managed queue to the backend.
 - **Backend (`/api/food/smart-entry` route)**:
-  - Server-side session management for the food queue (`req.session.foodQueue`) will be removed for the queue-building phase.
-  - API actions `add_to_queue`, `remove_from_queue`, `clear_queue`, `get_queue` will be deprecated/removed as these operations are now client-side.
-  - The `process_queue` action will solely rely on the `itemsToProcess` array sent from the client in the request body.
+  - ✅ Server-side session management for the food queue (`req.session.foodQueue`) will be removed for the queue-building phase.
+  - ✅ API actions `add_to_queue`, `remove_from_queue`, `clear_queue`, `get_queue` will be deprecated/removed as these operations are now client-side.
+  - ✅ The `process_queue` action will solely rely on the `itemsToProcess` array sent from the client in the request body.
 
 ### **Success Criteria**
-- Users can add multiple food items to the queue in `SmartFoodEntry` on Render without previous items being overwritten.
-- The food queue operates reliably and consistently across both development and production (Render) environments.
-- Backend `smart-entry` endpoint is simplified by removing session-based queue logic.
+- ✅ Users can add multiple food items to the queue in `SmartFoodEntry` on Render without previous items being overwritten.
+- ✅ The food queue operates reliably and consistently across both development and production (Render) environments.
+- ✅ Backend `smart-entry` endpoint is simplified by removing session-based queue logic.
 
 ---
 
-### **Post-Sprint 2.5 Stability Fixes & Optimizations (June 2025)** 🛠️
-*A series of critical fixes and improvements were implemented to ensure application stability on Render and resolve data integrity issues that arose during and after Sprint 2.5 deployment.*
+## **Interim Stability Fixes & Optimizations (Post-Sprint 2.5 / Pre-Sprint 2.75)** 🛠️
+*Prior to the full client-side queue refactor (Sprint 2.75), several critical fixes and improvements were implemented to enhance application stability on Render and address data integrity issues.*
 
 - **Render Deployment Stability:**
-  - **Session Management**: Implemented `connect-mongo` for persistent MongoDB session storage, resolving `MemoryStore` warnings and ensuring sessions persist across deployments.
-  - **Food Queue Robustness**: Addressed a race condition in food queue processing. Initially by adding `req.session.save()`, then by refactoring to a stateless approach where the frontend sends the complete queue to the backend for processing.
+  - **Session Management**: Implemented `connect-mongo` for persistent MongoDB session storage. This resolved `MemoryStore` warnings and was a foundational step towards ensuring sessions could persist across deployments, though queue-specific issues remained until Sprint 2.75.
+  - **Food Queue Interim Fixes**: Addressed a race condition in food queue processing by adding explicit `req.session.save()` calls in relevant backend routes. While this provided some improvement, persistent queue overwriting issues on Render necessitated the more comprehensive client-side refactor in Sprint 2.75.
   - **Build Error Resolution**: Fixed a TypeScript fallthrough error (`TS7029`) in `backend/src/routes/food.ts` that was causing Render builds to fail.
   - **Rate Limiting Adjustments**: Temporarily increased backend rate limits and frontend debounce times to mitigate "Too many requests" errors on Render. Implemented client-side caching for personal food search as a long-term optimization.
 
@@ -319,14 +319,47 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 
 ---
 
+## **SPRINT 3.1: AI Enhancements**
+*Priority: HIGH | Duration: [Estimate TBD]*
+
+### **Goals & Key Tasks**
+
+1.  **Improve AI Assistant Readability & UX**
+    -   ✅ Task: Redesign AI Assistant output format for improved readability and user experience on both mobile and desktop. Apply UI/UX best practices, considering clear typography, adequate spacing, and potentially using UI elements like cards or distinct sections for different types Mof information. (COMPLETED)
+
+2.  **Expand AI Assistant Data Access & Context**
+    -   ✅ Task: Ensure the AI Assistant has comprehensive access to and can effectively utilize the user's full database context. This includes food logs, personal foods, supplement logs, and bloodwork data to provide more personalized and contextually aware advice and actions. (COMPLETED)
+    -   ✅ Task: Updated tutorial content (`TUTORIAL_CONTENT.md`) and integrated it into the AI Assistant's context. (COMPLETED)
+
+3.  **Enable Conversational Food Logging via AI Assistant**
+    -   ✅ Task: Implement functionality allowing the AI Assistant to directly log food items based on conversational user commands (e.g., "log food [details]...", "add [food] to my breakfast..."). (COMPLETED)
+    -   ✅ Task: Update the AI Assistant's introductory messages and helpful instructions to inform users about this new food logging capability. (COMPLETED)
+
+4.  **Implement Multi-LLM Second Opinion Feature for Analysis**
+    -   ✅ Task: Integrate a new LLM provider (Gemini) by adding support for its API key in the backend configuration. (COMPLETED)
+    -   ✅ Task: Design and implement a "2nd Opinion" button/UI flow on the Analysis page, allowing users to select an alternative LLM (Gemini or other OpenAI models). (COMPLETED)
+    -   ✅ Task: Implement the backend logic required to request a new analysis from the selected alternative LLM using the same input data as the original analysis, including a comparative analysis step. (COMPLETED)
+    -   ✅ Task: Design and implement a clear UI to present the second opinion, including displaying it in the analysis details view. (COMPLETED)
+
+### **Success Criteria**
+-   ✅ AI Assistant interactions are more readable and user-friendly. (COMPLETED)
+-   ✅ AI Assistant demonstrates improved understanding and utilization of user's comprehensive health data, including app functionality via tutorial content. (COMPLETED)
+-   ✅ Users can successfully log food items through conversational commands with the AI Assistant. (COMPLETED)
+-   ✅ The "2nd Opinion" feature is functional, allowing users to get and compare analyses from different LLMs. (COMPLETED)
+
+### **Post-Sprint 3.1 Refinements**
+-   ✅ **Calorie and Macronutrient Goal Consistency**: Standardized calorie and macronutrient (protein, carbs, fat) goal calculation logic across the Dashboard and Food Log pages to ensure consistent targets are displayed to the user. This involved aligning activity multipliers, weekly weight change caps (adjusted to 3 lbs/week), and macro derivation logic (protein based on body weight, fat as 25% of target calories, carbs as remainder).
+
+---
+
 ## **SPRINT 3: Advanced Analytics & AI Features**
 *Priority: HIGH | Duration: 2 weeks | Based on Advanced Analytics Features*
 
 ### **Goals**
-- Implement multi-LLM analysis system for second opinions
-- Add AI recommendation action system
-- Integrate supplements data into comprehensive health analysis
+- Implement AI recommendation action system
+- Develop specific AI-driven analyses for combined health data (building on data access from Sprint 3.1)
 - Build cross-correlation analytics between diet, supplements, and biomarkers
+- Complete pending health metric features (hormones, bloodwork UI)
 
 ### **User Stories**
 1. **As a user, I want second opinions on my health analysis from different AI models**
@@ -335,34 +368,34 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 4. **As a user, I want to see correlations between my diet, supplements, and lab results**
 
 ### **Features from FEATURE_PLANNING.md High Priority**
-- [ ] **Multi-LLM Second Opinion** - Cross-validate analysis with Gemini vs ChatGPT
-  - Gemini Pro integration for second opinion analysis
-  - Side-by-side comparison of AI insights
-  - User preference for primary vs secondary analysis model
+- [ ] **Multi-LLM Second Opinion** - ~~Cross-validate analysis with Gemini vs ChatGPT~~ **(Addressed by SPRINT 3.1)**
+    -   ~~Gemini Pro integration for second opinion analysis~~ 
+    -   ~~Side-by-side comparison of AI insights~~ 
+    -   ~~User preference for primary vs secondary analysis model~~ 
 - [ ] **AI Recommendation Actions** - Save/highlight LLM suggestions into master checklist
-  - Actionable recommendation extraction
-  - Personal health action items tracking
-  - Progress tracking on AI suggestions
-- [ ] **Comprehensive Health Integration** - Include supplements/medications in LLM analysis
-  - Combined diet + supplements analysis
-  - Drug-nutrient interaction warnings
-  - Holistic health optimization recommendations
+    -   Actionable recommendation extraction
+    -   Personal health action items tracking
+    -   Progress tracking on AI suggestions
+- [ ] **Comprehensive Health Integration - Analytical Applications** - (Data access provided by Sprint 3.1)
+    -   [ ] Combined diet + supplements analysis by LLM
+    -   [ ] Potential drug-nutrient interaction warnings (research and implement if feasible)
+    -   [ ] Holistic health optimization recommendations based on integrated data
 - [ ] **Advanced Correlation Analytics** - Cross-analysis between diet, supplements, and biomarkers
-  - Statistical correlation identification
-  - Trend analysis across all health data
-  - Predictive insights based on historical patterns
+    -   Statistical correlation identification
+    -   Trend analysis across all health data
+    -   Predictive insights based on historical patterns
 
 ### **Technical Tasks**
-- Integrate Gemini Pro API for second opinion analysis
+- ~~Integrate Gemini Pro API for second opinion analysis~~ **(Moved to SPRINT 3.1)**
 - Build recommendation action tracking system
-- Create comprehensive data aggregation for multi-source analysis
+- Create comprehensive data aggregation for multi-source analysis (if not fully covered by AI data access in Sprint 3.1)
 - Implement correlation algorithms across diet/supplements/biomarkers
-- Design AI comparison interface
+- ~~Design AI comparison interface~~ **(Moved to SPRINT 3.1)**
 
 ### **Success Criteria**
-- Multi-LLM analysis providing valuable second opinions
+- ~~Multi-LLM analysis providing valuable second opinions~~ **(Addressed by SPRINT 3.1)**
 - Users can save and track AI recommendations effectively
-- Supplements data integrated into overall health analysis
+- Supplements data integrated into overall health analysis leading to actionable insights (e.g., interaction warnings)
 - Meaningful correlations identified and presented to users
 
 ---
@@ -405,6 +438,7 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 - [ ] **Photo + Voice Mode** - Camera + voice/text description for complex dish analysis
 - [ ] **Barcode Scanning** - UPC lookup for packaged foods
 - [ ] **Recipe Storage** - Save and reuse custom recipes
+- [ ] **Investigate & Improve Long-String Food Logging**: Address issue where very long, descriptive food log entries (e.g., full meal descriptions) result in generic logging (like "dinner") without detailed calorie/nutrient breakdown. Evaluate potential LLM limitations, input string length limits, or parsing issues. Consider testing with alternative LLM models for better handling of complex, lengthy food descriptions.
 
 ### **Technical Tasks**
 - Integrate camera and voice recording
@@ -442,6 +476,14 @@ Based on the nutrition app designs from [Dribbble](https://dribbble.com/tags/nut
 - Expert content properly integrated and attributed
 - Multiple perspectives presented for controversial topics
 - Research citations enhance AI recommendations
+
+---
+
+## Stubborn Styling Issues (To Be Addressed Later)
+*A running list of UI issues that require further investigation or different approaches.*
+
+- [ ] **ARIA Warning on Dialog Close:** Persistent "Blocked `aria-hidden` on a focused element" warning when closing the "Generate New Analysis" dialog in `frontend/src/pages/Analysis.tsx`. This occurs despite various attempts to manage focus restoration.
+- [ ] **Chip Outline Cut Off:** The `Chip` component displaying the second opinion model (e.g., "2nd Opinion: Gemini 1.5 Flash") in `frontend/src/pages/Analysis.tsx` has its top border/outline appearing cut off, despite attempts to fix with explicit padding, border, and line-height styles.
 
 ---
 

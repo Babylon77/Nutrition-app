@@ -10,6 +10,9 @@ export interface IAnalysis extends Document {
   summary?: string;
   detailedAnalysis?: string;
   llmModel?: string;
+  secondOpinionText?: string;
+  secondOpinionLlmModel?: string;
+  inputData: any; // To store the full input object for the analysis
   nutritionData?: {
     totalCalories: number;
     macronutrients: {
@@ -76,6 +79,18 @@ const analysisSchema = new Schema<IAnalysis>({
   llmModel: {
     type: String,
     trim: true
+  },
+  secondOpinionText: {
+    type: String,
+    trim: true
+  },
+  secondOpinionLlmModel: {
+    type: String,
+    trim: true
+  },
+  inputData: { // Single, correct definition for inputData
+    type: Schema.Types.Mixed,
+    required: true
   },
   nutritionData: {
     totalCalories: Number,

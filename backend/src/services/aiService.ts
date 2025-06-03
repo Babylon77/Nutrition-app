@@ -1,11 +1,15 @@
 import OpenAI from 'openai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { logger } from '../utils/logger';
 import { IFoodLog } from '../models/FoodLog';
 import { IBloodwork } from '../models/Bloodwork';
+import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export interface NutritionAnalysisInput {
   foodLogs: IFoodLog[];
@@ -48,6 +52,7 @@ export interface CorrelationAnalysisInput {
 
 class AIService {
   private currentModel = 'gpt-4o-mini'; // Back to stable, working model
+  private geminiModel = 'gemini-1.5-flash-latest'; // Changed to 1.5 flash
   
   getCurrentModel(): string {
     return this.currentModel;
@@ -105,7 +110,12 @@ class AIService {
     }
   }
 
-  async callOpenAI(prompt: string, maxTokens: number = 2000): Promise<string> {
+  async callOpenAI(
+    messages: ChatCompletionMessageParam[], 
+    maxTokens: number = 2000, 
+    temperature: number = 0.3,
+    model?: string // Optional model override
+  ): Promise<string> {
     try {
       if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'your-openai-api-key-here') {
         logger.error('OpenAI API key is not configured or is the default placeholder');
@@ -118,19 +128,10 @@ class AIService {
       logger.info(`Using OpenAI API key: ${keyStart}...${keyEnd} (length: ${process.env.OPENAI_API_KEY.length})`);
 
       const response = await openai.chat.completions.create({
-        model: this.currentModel,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a qualified nutritionist and health analyst. Provide evidence-based, actionable insights about nutrition and health data. Always include disclaimers about consulting healthcare professionals for medical advice.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
+        model: model || this.currentModel, // Use provided model or default
+        messages: messages, // Use the full messages array
         max_tokens: maxTokens,
-        temperature: 0.3,
+        temperature: temperature,
       });
 
       return response.choices[0]?.message?.content || '';
@@ -166,6 +167,76 @@ class AIService {
     }
   }
 
+  private async callGemini(prompt: string, maxOutputTokens: number = 2000): Promise<string> {
+    try {
+      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_actual_gemini_api_key_here' || process.env.GEMINI_API_KEY === '') {
+        logger.error('Gemini API key is not configured or is the default placeholder');
+        throw new Error('Gemini API key is not configured. Please set GEMINI_API_KEY in your .env file.');
+      }
+
+      // Log the first and last few characters for debugging (safely)
+      const keyStart = process.env.GEMINI_API_KEY.substring(0, 7);
+      const keyEnd = process.env.GEMINI_API_KEY.substring(process.env.GEMINI_API_KEY.length - 4);
+      logger.info(`Using Gemini API key: ${keyStart}...${keyEnd} (length: ${process.env.GEMINI_API_KEY.length})`);
+      
+      const model = genAI.getGenerativeModel({ 
+        model: this.geminiModel,
+        // Basic safety settings - adjust as needed
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+          },
+        ],
+        generationConfig: {
+          maxOutputTokens: maxOutputTokens,
+          // temperature: 0.9, // Optional: Adjust for creativity, default is often 0.9 for gemini-pro
+          // topP: 1, // Optional
+        }
+      });
+
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      const text = response.text();
+      
+      if (!text) {
+        logger.warn('Gemini API returned an empty response or response without text.', { response });
+        // Check for blocked content due to safety settings
+        if (response.promptFeedback?.blockReason) {
+          throw new Error(`Gemini API request was blocked due to: ${response.promptFeedback.blockReason}. Prompt feedback: ${JSON.stringify(response.promptFeedback)}`);
+        }
+        throw new Error('Gemini API returned an empty response.');
+      }
+      return text;
+    } catch (error: any) {
+      logger.error('Gemini API error:', {
+        message: error.message,
+        // Add any specific Gemini error properties if available
+      });
+      if (error.message.includes('API key')) {
+        throw new Error('Gemini API key is missing, invalid, or not enabled. Please check your configuration and ensure the Gemini API is enabled in your Google Cloud project.');
+      }
+      if (error.message.includes('content was blocked')) { // Specific check for content blocking
+         throw new Error(`Gemini content generation blocked: ${error.message}`);
+      }
+      // It's useful to check for specific error types from the Gemini SDK if they become known
+      // For example, if the SDK throws errors with specific `code` or `status` properties.
+      throw new Error(`Gemini API error: ${error.message || 'Unknown error occurred'}`);
+    }
+  }
+
   async analyzeNutrition(nutritionData: any): Promise<{
     insights: string[];
     recommendations: string[];
@@ -174,221 +245,79 @@ class AIService {
     detailedAnalysis: string;
     llmModel: string;
   }> {
-    // Calculate actual data period by counting unique dates
-    const foodLogs = nutritionData.foodLogs || [];
-    const supplementRegimens = nutritionData.supplementRegimens || [];
-    const supplementIntakes = nutritionData.supplementIntakes || [];
+    const prompt = `Analyze the following nutrition data and provide insights and recommendations.
+      User Profile: ${JSON.stringify(nutritionData.userProfile, null, 2)}
+      Food Logs Summary (Actual Days: ${nutritionData.actualDays}, Requested: ${nutritionData.requestedDays}):
+      Total Calories: ${nutritionData.totalCalories}, Protein: ${nutritionData.totalProtein}g, Carbs: ${nutritionData.totalCarbs}g, Fat: ${nutritionData.totalFat}g
+      Full Food Log Details:
+      ${nutritionData.foodLogs.map((log: { date: string | number | Date; mealType: any; foods: any[]; totalCalories: any; }) => `
+        Date: ${new Date(log.date).toLocaleDateString()}
+        Meal: ${log.mealType}
+        Foods: ${log.foods.map((food: { name: any; quantity: any; unit: any; calories: any; }) => `${food.name} (${food.quantity} ${food.unit}) - ${food.calories} kcal`).join(', ')}
+        Total Meal Calories: ${log.totalCalories}
+      `).join('\\n')}
+
+      Supplement Regimens:
+      ${nutritionData.supplementRegimens.map((reg: { name: any; dosage: any; unit: any; frequency: any; }) => `${reg.name} - ${reg.dosage} ${reg.unit}, ${reg.frequency}`).join('\\n') || 'None'}
+
+      Supplement Intakes (Recent):
+      ${nutritionData.supplementIntakes.map((intake: { supplementName: any; dosage: any; unit: any; dateTaken: string | number | Date; }) => `${intake.supplementName} - ${intake.dosage} ${intake.unit} on ${new Date(intake.dateTaken).toLocaleDateString()}`).join('\\n') || 'None'}
+
+      Focus on:
+      - Overall diet quality and macronutrient balance.
+      - Potential micronutrient deficiencies or excesses (infer based on food types if specific data is missing).
+      - Alignment with user's health goals: ${nutritionData.userProfile?.healthGoals?.join(', ') || 'Not specified'}.
+      - Actionable recommendations for improvement.
+      - Impact of supplements, if any.
+      
+      Return your response as a JSON object with the following structure:
+      {
+        "insights": ["Insight 1", "Insight 2", "Insight 3", "Insight 4", "Insight 5"],
+        "recommendations": ["Recommendation 1", "Recommendation 2", "Recommendation 3", "Recommendation 4", "Recommendation 5"],
+        "confidence": 0.85, // Your confidence in the analysis (0.0 to 1.0)
+        "summary": "A brief overall summary of the nutritional status.",
+        "detailedAnalysis": "A more detailed breakdown of the analysis."
+      }
+      Be concise and clear in your insights and recommendations.
+      `;
     
-    // Log food data for debugging
-    logger.info('NUTRITION ANALYSIS DEBUG - Food data:', {
-      foodLogsCount: foodLogs.length,
-      totalCalories: nutritionData.totalCalories,
-      totalProtein: nutritionData.totalProtein,
-      totalCarbs: nutritionData.totalCarbs,
-      totalFat: nutritionData.totalFat,
-      supplementRegimenCount: supplementRegimens.length,
-      supplementIntakeCount: supplementIntakes.length,
-      foodSample: foodLogs.slice(0, 2).map((log: any) => ({
-        date: log.date,
-        mealType: log.mealType,
-        totalCalories: log.totalCalories,
-        totalProtein: log.totalProtein,
-        foodsCount: log.foods?.length || 0,
-        firstFood: log.foods?.[0]?.name || 'No foods'
-      }))
-    });
-    
-    const uniqueDates = [...new Set(foodLogs.map((log: any) => 
-      new Date(log.date).toDateString()
-    ))];
-    const actualDays = uniqueDates.length;
-    const dateRange = foodLogs.length > 0 ? {
-      start: new Date(Math.min(...foodLogs.map((log: any) => new Date(log.date).getTime()))),
-      end: new Date(Math.max(...foodLogs.map((log: any) => new Date(log.date).getTime())))
-    } : null;
-    
-    const prompt = `
-Analyze the following comprehensive nutrition data including both food intake and supplement regimens:
+    logger.info('Requesting nutrition analysis from OpenAI.');
+    const messagesForOpenAI: ChatCompletionMessageParam[] = [
+      { role: 'system', content: 'You are a qualified nutritionist and health analyst. Respond in JSON.' },
+      { role: 'user', content: prompt }
+    ];
+    const analysisResult = await this.callOpenAI(messagesForOpenAI, 3000, 0.3, this.currentModel);
 
-CALCULATED NUTRITION TOTALS (${actualDays} day${actualDays !== 1 ? 's' : ''}):
-- Total Calories: ${nutritionData.totalCalories || 0} kcal (${actualDays > 0 ? Math.round((nutritionData.totalCalories || 0) / actualDays) : 0} kcal/day average)
-- Total Protein: ${nutritionData.totalProtein || 0}g (${actualDays > 0 ? Math.round((nutritionData.totalProtein || 0) / actualDays) : 0}g/day average)
-- Total Carbohydrates: ${nutritionData.totalCarbs || 0}g (${actualDays > 0 ? Math.round((nutritionData.totalCarbs || 0) / actualDays) : 0}g/day average)
-- Total Fat: ${nutritionData.totalFat || 0}g (${actualDays > 0 ? Math.round((nutritionData.totalFat || 0) / actualDays) : 0}g/day average)
-- Total Fiber: ${nutritionData.totalFiber || 0}g (${actualDays > 0 ? Math.round((nutritionData.totalFiber || 0) / actualDays) : 0}g/day average)
-- Total Sugar: ${nutritionData.totalSugar || 0}g (${actualDays > 0 ? Math.round((nutritionData.totalSugar || 0) / actualDays) : 0}g/day average)
-- Total Sodium: ${nutritionData.totalSodium || 0}mg (${actualDays > 0 ? Math.round((nutritionData.totalSodium || 0) / actualDays) : 0}mg/day average)
-- Total Potassium: ${nutritionData.totalPotassium || 0}mg (${actualDays > 0 ? Math.round((nutritionData.totalPotassium || 0) / actualDays) : 0}mg/day average)
-
-FOOD LOGS SUMMARY:
-- Food logs analyzed: ${foodLogs.length} entries across ${actualDays} day${actualDays !== 1 ? 's' : ''}
-- Date range: ${dateRange ? `${dateRange.start.toDateString()} to ${dateRange.end.toDateString()}` : 'Single day analysis'}
-- Meal distribution: ${foodLogs.map((log: any) => `${log.mealType}(${log.totalCalories}cal)`).join(', ')}
-
-USER PROFILE:
-${JSON.stringify(nutritionData.userProfile, null, 2)}
-
-SUPPLEMENT DATA:
-Active Supplement Regimens: ${supplementRegimens.length} supplements
-${JSON.stringify(supplementRegimens.map((reg: any) => ({
-  name: reg.name,
-  brand: reg.brand,
-  dosage: reg.dosage,
-  unit: reg.unit,
-  frequency: reg.frequency,
-  timeOfDay: reg.timeOfDay,
-  notes: reg.notes,
-  instructions: reg.instructions
-})), null, 2)}
-
-Recent Supplement Intake: ${supplementIntakes.length} recorded intakes
-${JSON.stringify(supplementIntakes.map((intake: any) => ({
-  supplementName: intake.supplementName,
-  dosage: intake.dosage,
-  unit: intake.unit,
-  dateTaken: intake.dateTaken,
-  timeOfDay: intake.timeOfDay
-})), null, 2)}
-
-IMPORTANT CONTEXT:
-- Food data covers ${actualDays} day${actualDays !== 1 ? 's' : ''} of logging
-- Date range: ${dateRange ? `${dateRange.start.toDateString()} to ${dateRange.end.toDateString()}` : 'Single day analysis'}
-- User has ${supplementRegimens.length} active supplement regimens
-- Recent supplement compliance: ${supplementIntakes.length} recorded intakes
-- Adjust analysis depth and confidence based on available data period
-- For single-day analysis: focus on daily patterns and immediate recommendations
-- For multi-day analysis: identify trends and patterns over time
-
-${nutritionData.userProfile?.activityLevel ? `
-ACTIVITY LEVEL CONTEXT:
-- User's activity level: ${nutritionData.userProfile.activityLevel}
-- Factor this specific activity level into your calorie recommendations
-- Use appropriate activity multipliers: sedentary (1.15), lightly_active (1.3), moderately_active (1.45), very_active (1.6), extra_active (1.75)
-- Calorie needs should be based on BMR × activity multiplier
-` : ''}
-
-${nutritionData.userProfile?.weightGoal && nutritionData.userProfile?.weight && nutritionData.userProfile?.weightGoalTimeframe ? `
-WEIGHT GOAL CONTEXT:
-- Current weight: ${(nutritionData.userProfile.weight * 2.20462).toFixed(1)} lbs
-- Target weight: ${nutritionData.userProfile.weightGoal} lbs
-- Timeline: ${nutritionData.userProfile.weightGoalTimeframe} weeks
-- Weight change needed: ${((nutritionData.userProfile.weight * 2.20462) - nutritionData.userProfile.weightGoal).toFixed(1)} lbs
-- Rate needed: ${(((nutritionData.userProfile.weight * 2.20462) - nutritionData.userProfile.weightGoal) / nutritionData.userProfile.weightGoalTimeframe).toFixed(1)} lbs/week
-- Factor this weight goal into your calorie and macronutrient recommendations
-- Assess whether current intake aligns with weight goal objectives
-- Use conservative BMR calculations and realistic activity level estimates
-- Cap recommendations at 2 lbs/week weight loss maximum for safety
-- For sustainable weight loss, recommend 1-2 lbs/week (deficit of 500-1000 calories/day)
-` : ''}
-
-Please provide a JSON response with the following structure:
-{
-  "insights": ["insight1", "insight2", "insight3", "insight4", "insight5"],
-  "recommendations": ["recommendation1", "recommendation2", "recommendation3", "recommendation4", "recommendation5"],
-  "confidence": 85,
-  "summary": "A brief 2-3 sentence overview of the comprehensive nutritional status including both food and supplement intake for the ${actualDays}-day period",
-  "detailedAnalysis": "A detailed 3-4 paragraph narrative analysis covering food macro/micronutrient balance, supplement regimen effectiveness, potential nutrient gaps or overlaps, overall nutritional health assessment, and integrated recommendations"
-}
-
-COMPREHENSIVE ANALYSIS FOCUS AREAS:
-- Food macronutrient balance (protein, carbs, fat ratios) from dietary sources.  Use modern ratios for target weight and activity level.
-- Supplement regimen effectiveness and appropriateness in the context of total nutrient intake.  
-- Focus supplments analysis on immune health, gut health, and overall health.  
-- Focus analysis on user's personal information, goals, allergies and dietary restrictions.  Make sure it feels personalized and tailored to the user.
-- Total nutrient intake combining food + supplements (avoid double-counting)
-- Potential nutrient gaps that supplements are addressing vs. remaining deficiencies
-- Supplement timing and absorption optimization recommendations
-- Drug-nutrient and supplement-food interactions
-- Caloric intake relative to weight goals AND activity level (if specified)
-- Fiber intake: adequacy, sources, and digestive health implications
-- Sugar breakdown: added vs natural sugars, timing, and metabolic impact
-- Micronutrient density from food sources and supplement contributions
-- Meal timing and distribution throughout the day + supplement scheduling
-- Hydration and electrolyte balance (sodium, potassium) from all sources
-- Food variety, supplement necessity, and overall nutritional quality
-- Energy balance relative to estimated needs, activity level, and weight goals
-
-CRITICAL GUIDELINES:
-- Return ONLY valid JSON, no markdown formatting or code blocks
-- Confidence should be 30-50 for single day, 60-80 for 2-7 days, 80-95 for week+ data
-- Provide exactly 5 insights and 5 recommendations.  
-- Insights and reccomendations should be as short as possible.  Recommendations should be of the highest impact, actionable and specific.
-- Use the CALCULATED NUTRITION TOTALS provided above - do not manually recalculate from raw food data
-- Base your analysis on the daily averages: ${actualDays > 0 ? Math.round((nutritionData.totalCalories || 0) / actualDays) : 0} cal/day, ${actualDays > 0 ? Math.round((nutritionData.totalProtein || 0) / actualDays) : 0}g protein/day, etc.
-- Consider BOTH food and supplement sources for all nutrients
-- Identify any redundant supplementation or nutrient gaps
-- Be specific about supplement timing and food interactions
-- Include specific nutritional values and percentages when relevant
-- Adapt language based on data period (daily vs weekly patterns)
-- For limited data: focus on immediate actionable improvements
-- For extensive data: identify trends and long-term optimization strategies
-- If weight goals are specified, prioritize recommendations that support those goals
-- If activity level is specified, factor it into calorie recommendations and energy balance assessments
-- Address supplement-food synergies and potential conflicts. Specifically address interaction between supplements, such as vitamins and fiber.
-- Recommend supplement timing optimizations (with/without food, spacing, etc.)
-- Always reference the provided calculated totals, not individual food items
-`;
-
-    let response: string = '';
-    let cleanedResponse: string = '';
-    
     try {
-      response = await this.callOpenAI(prompt, 2500);
-      
-      // Enhanced JSON extraction and cleaning
-      cleanedResponse = response.trim();
-      
-      // Remove markdown code blocks if present
-      if (cleanedResponse.includes('```json')) {
-        const jsonMatch = cleanedResponse.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      } else if (cleanedResponse.includes('```')) {
-        const jsonMatch = cleanedResponse.match(/```\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
+      // Clean the AI response: remove markdown code block fences
+      let cleanedResult = analysisResult;
+      if (cleanedResult.startsWith("```json")) {
+        cleanedResult = cleanedResult.substring(7); // Remove ```json
       }
-      
-      // Remove control characters that can break JSON parsing
-      cleanedResponse = cleanedResponse.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
-      
-      // Try to find valid JSON structure
-      let jsonStartIndex = cleanedResponse.indexOf('{');
-      let jsonEndIndex = cleanedResponse.lastIndexOf('}');
-      
-      if (jsonStartIndex !== -1 && jsonEndIndex !== -1 && jsonEndIndex > jsonStartIndex) {
-        cleanedResponse = cleanedResponse.substring(jsonStartIndex, jsonEndIndex + 1);
+      if (cleanedResult.endsWith("```")) {
+        cleanedResult = cleanedResult.substring(0, cleanedResult.length - 3);
       }
-      
-      logger.info('Attempting to parse AI response for comprehensive nutrition analysis...');
-      const parsed = JSON.parse(cleanedResponse);
-      
-      // Convert confidence from percentage (0-100) to decimal (0-1)
-      const confidence = typeof parsed.confidence === 'number' 
-        ? Math.min(Math.max(parsed.confidence / 100, 0), 1) 
-        : 0.8; // Default fallback
-      
+      cleanedResult = cleanedResult.trim(); // Trim whitespace
+
+      const parsedResult = JSON.parse(cleanedResult);
       return {
-        insights: Array.isArray(parsed.insights) ? parsed.insights.slice(0, 5) : ['Unable to generate insights'],
-        recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations.slice(0, 5) : ['Unable to generate recommendations'],
-        confidence,
-        summary: parsed.summary || 'Comprehensive nutritional analysis completed with available food and supplement data.',
-        detailedAnalysis: parsed.detailedAnalysis || 'Detailed analysis includes both dietary intake and supplement regimen effectiveness. Consider working with a registered dietitian for personalized optimization.',
+        insights: Array.isArray(parsedResult.insights) ? parsedResult.insights.slice(0, 5) : ['Unable to generate insights'],
+        recommendations: Array.isArray(parsedResult.recommendations) ? parsedResult.recommendations.slice(0, 5) : ['Unable to generate recommendations'],
+        confidence: typeof parsedResult.confidence === 'number' ? parsedResult.confidence : 0.85,
+        summary: parsedResult.summary || 'Nutrition analysis completed with available data.',
+        detailedAnalysis: parsedResult.detailedAnalysis || 'Detailed analysis includes both dietary intake and supplement regimen effectiveness. Consider working with a registered dietitian for personalized optimization.',
         llmModel: this.currentModel
       };
     } catch (error) {
-      logger.error('Failed to parse AI response for comprehensive nutrition analysis:', error);
-      logger.error('Raw AI response (first 500 chars):', response?.substring(0, 500));
-      logger.error('Cleaned response (first 500 chars):', cleanedResponse?.substring(0, 500));
+      logger.error('Failed to parse AI response for nutrition analysis:', error);
+      logger.error('Raw AI response (first 500 chars):', analysisResult?.substring(0, 500));
       
       // Fallback response
       return {
-        insights: ['Unable to analyze comprehensive nutrition data at this time', 'Please ensure you have logged sufficient food entries', 'Consider reviewing your supplement regimen with a healthcare provider', 'Try again later or check your internet connection', 'Both food and supplement tracking contribute to optimal health'],
+        insights: ['Unable to analyze nutrition data at this time', 'Please ensure you have logged sufficient food entries', 'Consider reviewing your supplement regimen with a healthcare provider', 'Try again later or check your internet connection', 'Both food and supplement tracking contribute to optimal health'],
         recommendations: ['Log more diverse food entries for better analysis', 'Review supplement timing with meals for better absorption', 'Ensure accurate portion sizes and supplement dosages', 'Try again in a few minutes', 'Consider consulting with a registered dietitian'],
         confidence: 0.1,
-        summary: 'Comprehensive analysis temporarily unavailable due to technical issues.',
+        summary: 'Nutrition analysis temporarily unavailable due to technical issues.',
         detailedAnalysis: 'We were unable to generate a detailed nutritional analysis including both food and supplement data at this time. For optimal health insights, ensure you have logged comprehensive food entries and accurate supplement regimens. A registered dietitian can help you optimize both your diet and supplement strategy based on your individual needs and health goals.',
         llmModel: this.currentModel
       };
@@ -403,132 +332,62 @@ CRITICAL GUIDELINES:
     detailedAnalysis: string;
     llmModel: string;
   }> {
-    const bloodworkEntries = Array.isArray(bloodworkData.bloodwork) ? bloodworkData.bloodwork : [bloodworkData.bloodwork];
-    const entryCount = bloodworkEntries.length;
-    const isMultipleTests = entryCount > 1;
-    
-    const prompt = `
-Analyze the following comprehensive bloodwork data ${isMultipleTests ? `across ${entryCount} test results` : 'from a single test'} and provide detailed health insights and recommendations:
+    const prompt = `Analyze the following bloodwork data and provide insights and recommendations.
+      User Profile: ${JSON.stringify(bloodworkData.userProfile, null, 2)}
+      Bloodwork Results:
+      ${bloodworkData.bloodwork.map((test: { testName: any; testDate: string | number | Date; labValues: any[]; notes: any; }) => `
+        Test: ${test.testName} (Date: ${new Date(test.testDate).toLocaleDateString()})
+        Values:
+        ${test.labValues.map((val: { name: any; value: any; unit: any; referenceRange: any; status: any; }) => 
+          `  - ${val.name}: ${val.value} ${val.unit} (Range: ${val.referenceRange || 'N/A'}, Status: ${val.status || 'N/A'})`
+        ).join('\\n')}
+        ${test.notes ? `Notes: ${test.notes}` : ''}
+      `).join('\\n\\n')}
 
-BLOODWORK DATA (${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}):
-${JSON.stringify(bloodworkEntries.map((entry: any) => ({
-  testDate: entry.testDate,
-  labName: entry.labName,
-  doctorName: entry.doctorName,
-  labValues: entry.labValues.map((lab: any) => ({
-    name: lab.name,
-    value: lab.value,
-    unit: lab.unit,
-    referenceRange: lab.referenceRange,
-    status: lab.status
-  }))
-})), null, 2)}
+      Focus on:
+      - Key biomarkers out of range or concerning.
+      - Potential health implications.
+      - Lifestyle or dietary factors that might influence these results.
+      - Actionable recommendations for improvement or further investigation.
+      
+      Return your response as a JSON object with the following structure:
+      {
+        "insights": ["Insight 1 regarding bloodwork", "Insight 2"],
+        "recommendations": ["Recommendation 1 for bloodwork", "Recommendation 2"],
+        "confidence": 0.9, // Your confidence in the analysis (0.0 to 1.0)
+        "summary": "A brief overall summary of the bloodwork findings.",
+        "detailedAnalysis": "A more detailed breakdown of the bloodwork analysis."
+      }
+      `;
 
-USER PROFILE:
-${JSON.stringify(bloodworkData.userProfile, null, 2)}
+    logger.info('Requesting bloodwork analysis from OpenAI.');
+    const messagesForOpenAI: ChatCompletionMessageParam[] = [ 
+      { role: 'system', content: 'You are a health analyst specializing in bloodwork interpretation. Provide evidence-based insights. Respond in JSON.' },
+      { role: 'user', content: prompt }
+    ];
+    const analysisResult = await this.callOpenAI(messagesForOpenAI, 2500, 0.3, this.currentModel);
 
-${isMultipleTests ? `
-TREND ANALYSIS CONTEXT:
-- Multiple test results available spanning from ${new Date(bloodworkEntries[bloodworkEntries.length - 1].testDate).toDateString()} to ${new Date(bloodworkEntries[0].testDate).toDateString()}
-- Focus on trends, improvements, and changes over time
-- Identify patterns and trajectory of key biomarkers
-- Consider whether values are moving in positive or negative directions
-- Assess effectiveness of any interventions between tests
-` : `
-SINGLE TEST ANALYSIS CONTEXT:
-- Single test result analysis
-- Focus on current status relative to reference ranges
-- Provide baseline assessment for future monitoring
-- Recommend appropriate follow-up timing
-`}
-
-Please provide a JSON response with the following structure:
-{
-  "insights": ["insight1", "insight2", "insight3", "insight4", "insight5"],
-  "recommendations": ["recommendation1", "recommendation2", "recommendation3", "recommendation4", "recommendation5"],
-  "confidence": 85,
-  "summary": "A brief 2-3 sentence overview of the ${isMultipleTests ? 'bloodwork trends and' : ''} overall health status ${isMultipleTests ? 'across multiple tests' : 'from this test'}",
-  "detailedAnalysis": "A detailed 3-4 paragraph narrative analysis covering lab value interpretation${isMultipleTests ? ', trends over time' : ''}, risk factors, health implications with specific reference ranges and ${isMultipleTests ? 'trend-based' : ''} recommendations"
-}
-
-Important: 
-- Return ONLY valid JSON, no markdown formatting or code blocks
-- Confidence should be a number between 0-100 (percentage)
-- ${isMultipleTests ? 'Higher confidence due to multiple data points and trend analysis' : 'Moderate confidence based on single test result'}
-- Provide exactly 5 insights and 5 recommendations
-- Focus on lab values${isMultipleTests ? ', trends,' : ''} and health implications
-- Be specific and actionable in your recommendations
-- Your analysis should be cutting edge and up to date.  Use the latest research and evidence based practices.
-- You should critically evaluate the data and provide a detailed analysis of the data.  Do not just provide a summary of the data.
-- Identify the impact of confounding factors, such as age, gender, weight, and also multiplicative effects to risk factors.  For example, if a user is has high LDL, and Lipoprotein(a) is high, then the impact of LDL is amplified.
-- Include specific lab values and reference ranges when relevant
-- ${isMultipleTests ? 'Emphasize trend analysis and changes over time' : 'Focus on current status and future monitoring'}
-- Always recommend consulting healthcare professionals for medical advice
-- Summary should highlight key findings${isMultipleTests ? ' and trends' : ''}
-- Detailed analysis should be educational and comprehensive${isMultipleTests ? ' with trend interpretation' : ''}
-`;
-
-    let response: string = '';
-    let cleanedResponse: string = '';
-    
     try {
-      response = await this.callOpenAI(prompt, 2500);
-      
-      // Enhanced JSON extraction and cleaning
-      cleanedResponse = response.trim();
-      
-      // Remove markdown code blocks if present
-      if (cleanedResponse.includes('```json')) {
-        const jsonMatch = cleanedResponse.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      } else if (cleanedResponse.includes('```')) {
-        const jsonMatch = cleanedResponse.match(/```\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      }
-      
-      // Remove control characters that can break JSON parsing
-      cleanedResponse = cleanedResponse.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
-      
-      // Try to find valid JSON structure
-      let jsonStartIndex = cleanedResponse.indexOf('{');
-      let jsonEndIndex = cleanedResponse.lastIndexOf('}');
-      
-      if (jsonStartIndex !== -1 && jsonEndIndex !== -1 && jsonEndIndex > jsonStartIndex) {
-        cleanedResponse = cleanedResponse.substring(jsonStartIndex, jsonEndIndex + 1);
-      }
-      
-      logger.info(`Attempting to parse AI response for ${isMultipleTests ? 'multi-test' : 'single'} bloodwork analysis...`);
-      const parsed = JSON.parse(cleanedResponse);
-      
-      // Convert confidence from percentage (0-100) to decimal (0-1)
-      // Higher confidence for multiple tests due to trend data
-      const baseConfidence = typeof parsed.confidence === 'number' ? parsed.confidence : (isMultipleTests ? 85 : 75);
-      const confidence = Math.min(Math.max(baseConfidence / 100, 0), 1);
-      
+      const parsedResult = JSON.parse(analysisResult);
       return {
-        insights: Array.isArray(parsed.insights) ? parsed.insights.slice(0, 5) : ['Unable to generate insights'],
-        recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations.slice(0, 5) : ['Unable to generate recommendations'],
-        confidence,
-        summary: parsed.summary || `${isMultipleTests ? 'Multi-test' : 'Single'} bloodwork analysis completed with available data.`,
-        detailedAnalysis: parsed.detailedAnalysis || `Detailed ${isMultipleTests ? 'trend' : 'bloodwork'} analysis is currently unavailable. Please consult with a healthcare professional for proper interpretation.`,
+        insights: Array.isArray(parsedResult.insights) ? parsedResult.insights.slice(0, 5) : ['Unable to generate insights'],
+        recommendations: Array.isArray(parsedResult.recommendations) ? parsedResult.recommendations.slice(0, 5) : ['Unable to generate recommendations'],
+        confidence: typeof parsedResult.confidence === 'number' ? parsedResult.confidence : 0.9,
+        summary: parsedResult.summary || 'Bloodwork analysis completed with available data.',
+        detailedAnalysis: parsedResult.detailedAnalysis || 'Detailed bloodwork analysis is currently unavailable. Please consult with a healthcare professional for proper interpretation.',
         llmModel: this.currentModel
       };
     } catch (error) {
-      logger.error(`Failed to parse AI response for ${isMultipleTests ? 'multi-test' : 'single'} bloodwork analysis:`, error);
-      logger.error('Raw AI response (first 500 chars):', response?.substring(0, 500));
-      logger.error('Cleaned response (first 500 chars):', cleanedResponse?.substring(0, 500));
+      logger.error('Failed to parse AI response for bloodwork analysis:', error);
+      logger.error('Raw AI response (first 500 chars):', analysisResult?.substring(0, 500));
       
       // Fallback response
       return {
-        insights: ['Unable to analyze bloodwork data at this time', `${isMultipleTests ? 'Multiple test results' : 'Lab values'} appear to be documented`, 'Professional interpretation recommended', 'Regular monitoring is important', 'Follow up with healthcare provider'],
+        insights: ['Unable to analyze bloodwork data at this time', 'Lab values appear to be documented', 'Professional interpretation recommended', 'Regular monitoring is important', 'Follow up with healthcare provider'],
         recommendations: ['Consult with a healthcare professional for proper interpretation', 'Discuss any abnormal values with your doctor', 'Maintain regular health checkups', 'Keep a record of all lab results', 'Follow prescribed treatment plans'],
         confidence: 0.1,
-        summary: `${isMultipleTests ? 'Multi-test' : 'Single'} bloodwork analysis temporarily unavailable due to technical issues.`,
-        detailedAnalysis: `We were unable to generate a detailed ${isMultipleTests ? 'trend-based ' : ''}bloodwork analysis at this time. This may be due to technical issues or service limitations. For proper medical interpretation of your lab results${isMultipleTests ? ' and trends over time' : ''}, it is essential to consult with a qualified healthcare professional who can provide personalized medical advice based on your complete health history, current symptoms, and individual risk factors. Never rely solely on automated analysis for medical decisions.`,
+        summary: 'Bloodwork analysis temporarily unavailable due to technical issues.',
+        detailedAnalysis: 'We were unable to generate a detailed bloodwork analysis at this time. This type of analysis requires sophisticated interpretation of laboratory biomarkers. For meaningful insights into your health markers, consider working with a qualified healthcare professional who can provide personalized medical advice based on your complete health history, current symptoms, and individual risk factors. Never rely solely on automated analysis for medical decisions.',
         llmModel: this.currentModel
       };
     }
@@ -542,92 +401,59 @@ Important:
     detailedAnalysis: string;
     llmModel: string;
   }> {
-    const prompt = `
-Analyze the correlation between the following nutrition and bloodwork data to identify relationships and provide comprehensive recommendations:
+    const prompt = `Analyze the following integrated nutrition and bloodwork data for potential correlations and provide insights.
+      User Profile: ${JSON.stringify(nutritionData.userProfile, null, 2)}
+      
+      Nutrition Summary (Last ${nutritionData.actualDays} days):
+      Average Calories: ${nutritionData.totalCalories / nutritionData.actualDays}, Protein: ${nutritionData.totalProtein / nutritionData.actualDays}g, Carbs: ${nutritionData.totalCarbs / nutritionData.actualDays}g, Fat: ${nutritionData.totalFat / nutritionData.actualDays}g
+      Key Food Log Patterns: [Provide a brief summary of common foods or meal types if possible from data]
+      ${nutritionData.foodLogs.slice(0,3).map((log: { date: string | number | Date; mealType: any; foods: any[]; }) => `Date: ${new Date(log.date).toLocaleDateString()}, Meal: ${log.mealType}, Foods: ${log.foods.map((food: { name: any; }) => food.name).join(', ')}`).join('\\n')}
 
-Nutrition Data:
-${JSON.stringify(nutritionData, null, 2)}
+      Bloodwork Summary:
+      ${bloodworkData.bloodwork.map((test: { testName: any; testDate: string | number | Date; labValues: any[]; }) => `
+        Test: ${test.testName} (Date: ${new Date(test.testDate).toLocaleDateString()})
+        Key Values:
+        ${test.labValues.filter((val: { status: string; }) => val.status && val.status !== 'Normal').map((val: { name: any; value: any; unit: any; status: any; }) => 
+          `  - ${val.name}: ${val.value} ${val.unit} (Status: ${val.status})`
+        ).join('\\n')}
+      `).join('\\n\\n')}
 
-Bloodwork Data:
-${JSON.stringify(bloodworkData, null, 2)}
+      Focus on:
+      - Potential correlations between dietary habits (e.g., high intake of certain foods/nutrients) and bloodwork markers.
+      - How supplements might be influencing biomarkers, based on nutrition data.
+      - Actionable recommendations considering both diet and bloodwork.
+      
+      Return your response as a JSON object with the structure:
+      {
+        "insights": ["Correlation insight 1", "Insight 2"],
+        "recommendations": ["Recommendation based on correlation", "Recommendation 2"],
+        "confidence": 0.75,
+        "summary": "Brief summary of correlations and overall health status.",
+        "detailedAnalysis": "Detailed breakdown of the correlation analysis."
+      }
+      If no clear correlations can be drawn, state that, but still provide general advice based on the combined data.
+      `;
 
-Please provide a JSON response with the following structure:
-{
-  "insights": ["insight1", "insight2", "insight3", "insight4", "insight5"],
-  "recommendations": ["recommendation1", "recommendation2", "recommendation3", "recommendation4", "recommendation5"],
-  "confidence": 85,
-  "summary": "A brief 2-3 sentence overview of key correlations found between nutrition and bloodwork",
-  "detailedAnalysis": "A detailed 3-4 paragraph narrative analysis exploring specific correlations between dietary patterns and lab values, potential causal relationships, and evidence-based dietary interventions that could improve biomarkers"
-}
+    logger.info('Requesting correlation analysis from OpenAI.');
+    const messagesForOpenAI: ChatCompletionMessageParam[] = [ 
+      { role: 'system', content: 'You are a health data analyst specializing in correlating diet, supplements, and bloodwork. Respond in JSON.' },
+      { role: 'user', content: prompt }
+    ];
+    const analysisResult = await this.callOpenAI(messagesForOpenAI, 3500, 0.3, this.currentModel);
 
-Important: 
-- Return ONLY valid JSON, no markdown formatting or code blocks
-- Confidence should be a number between 0-100 (percentage)
-- Provide exactly 5 insights and 5 recommendations. Keep insights and recommendations short and concise.  
-- Recommendations should be of the highest impact, actionable and specific. They should focus on actions the user can take to improve their health.
-- Focus on correlations between diet and lab values
-- Be specific and actionable in your recommendations.  Recommendations should be of the highest impact, actionable and specific.
-- Include specific nutritional values and lab results when relevant
-- Explain potential mechanisms behind correlations.  Search deep and look for all confounding factors, multiplicative effects, and other factors that could be influencing the correlation.
-- Summary should highlight the most significant correlations
-- Detailed analysis should be scientifically grounded and educational, but based on modern research and evidence based practices.  
-- Do not make up information, but be bold, while explaining uncertainty.  
-- When there are debates in the literature, explain the debate and provide your own opinion.  Do not just say "there is no evidence to support this" or "there is evidence to support this".  Explain the evidence and your opinion.
-`;
-
-    let response: string = '';
-    let cleanedResponse: string = '';
-    
     try {
-      response = await this.callOpenAI(prompt, 2500);
-      
-      // Enhanced JSON extraction and cleaning
-      cleanedResponse = response.trim();
-      
-      // Remove markdown code blocks if present
-      if (cleanedResponse.includes('```json')) {
-        const jsonMatch = cleanedResponse.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      } else if (cleanedResponse.includes('```')) {
-        const jsonMatch = cleanedResponse.match(/```\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      }
-      
-      // Remove control characters that can break JSON parsing
-      cleanedResponse = cleanedResponse.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
-      
-      // Try to find valid JSON structure
-      let jsonStartIndex = cleanedResponse.indexOf('{');
-      let jsonEndIndex = cleanedResponse.lastIndexOf('}');
-      
-      if (jsonStartIndex !== -1 && jsonEndIndex !== -1 && jsonEndIndex > jsonStartIndex) {
-        cleanedResponse = cleanedResponse.substring(jsonStartIndex, jsonEndIndex + 1);
-      }
-      
-      logger.info('Attempting to parse AI response for correlation analysis...');
-      const parsed = JSON.parse(cleanedResponse);
-      
-      // Convert confidence from percentage (0-100) to decimal (0-1)
-      const confidence = typeof parsed.confidence === 'number' 
-        ? Math.min(Math.max(parsed.confidence / 100, 0), 1) 
-        : 0.8; // Default fallback
-      
+      const parsedResult = JSON.parse(analysisResult);
       return {
-        insights: Array.isArray(parsed.insights) ? parsed.insights.slice(0, 5) : ['Unable to generate insights'],
-        recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations.slice(0, 5) : ['Unable to generate recommendations'],
-        confidence,
-        summary: parsed.summary || 'Correlation analysis completed with available data.',
-        detailedAnalysis: parsed.detailedAnalysis || 'Detailed correlation analysis is currently unavailable. Please ensure sufficient nutrition and bloodwork data is available.',
+        insights: Array.isArray(parsedResult.insights) ? parsedResult.insights.slice(0, 5) : ['Unable to generate insights'],
+        recommendations: Array.isArray(parsedResult.recommendations) ? parsedResult.recommendations.slice(0, 5) : ['Unable to generate recommendations'],
+        confidence: typeof parsedResult.confidence === 'number' ? parsedResult.confidence : 0.75,
+        summary: parsedResult.summary || 'Correlation analysis completed with available data.',
+        detailedAnalysis: parsedResult.detailedAnalysis || 'Detailed correlation analysis is currently unavailable. Please ensure sufficient nutrition and bloodwork data is available.',
         llmModel: this.currentModel
       };
     } catch (error) {
       logger.error('Failed to parse AI response for correlation analysis:', error);
-      logger.error('Raw AI response (first 500 chars):', response?.substring(0, 500));
-      logger.error('Cleaned response (first 500 chars):', cleanedResponse?.substring(0, 500));
+      logger.error('Raw AI response (first 500 chars):', analysisResult?.substring(0, 500));
       
       // Fallback response
       return {
@@ -699,155 +525,139 @@ Important:
       pounds: number;
     };
   }> {
-    const prompt = `
-You are a nutrition expert with comprehensive knowledge of food composition. Analyze the following food item and provide detailed nutritional information including weight conversion.
+    // Construct the prompt for the LLM
+    const prompt = `Provide detailed nutritional information for the food item: "${foodQuery}".
+If quantity and unit are part of the query (e.g., "1 large apple", "100g chicken breast"), use them. Otherwise, assume quantity is ${quantity} and unit is "${unit}".
+Break down the food item into its components if it's a meal (e.g., "chicken salad sandwich").
+If the item is ambiguous, use the most common interpretation.
 
-Food Item: "${foodQuery}"
-Quantity: ${quantity}
-Unit: ${unit}
+Return the response as a JSON object with the following structure. Ensure all nutrient values are numbers. If a nutrient is not present or data is unavailable, use 0.
+Do not include any text outside the JSON object.
 
-Please provide a JSON response with comprehensive nutritional data per the specified quantity and unit. Focus on accuracy and include all available micronutrients important for:
-- Hydration and electrolyte balance (sodium, potassium, magnesium)
-- Metabolic health (B-vitamins, chromium, magnesium)
-- Lipid profile and cardiovascular health (omega-3s, fiber, detailed fat breakdown)
-- Immune system function (vitamins A, C, D, E, zinc, selenium)
-- Performance and muscle health (creatine for applicable foods)
-
-For non-weight based units (serving, cup, slice, etc.), provide weight conversion estimates.
-
-Return ONLY valid JSON in this exact format:
 {
-  "name": "Original food name as entered",
-  "normalizedName": "Standardized food name",
-  "quantity": ${quantity},
-  "unit": "${unit}",
+  "name": "Original food query or most specific name found",
+  "normalizedName": "Normalized name of the food item (e.g., 'Apple, raw, with skin')",
+  "quantity": <parsed or default quantity as number>,
+  "unit": "<parsed or default unit as string>",
   "nutrition": {
-    "calories": 0,
-    "protein": 0,
-    "carbs": 0,
-    "fat": 0,
-    "fiber": 0,
-    "sugar": 0,
-    "sodium": 0,
-    "potassium": 0,
-    "calcium": 0,
-    "magnesium": 0,
-    "phosphorus": 0,
-    "iron": 0,
-    "zinc": 0,
-    "selenium": 0,
-    "vitaminA": 0,
-    "vitaminC": 0,
-    "vitaminD": 0,
-    "vitaminE": 0,
-    "vitaminK": 0,
-    "thiamin": 0,
-    "riboflavin": 0,
-    "niacin": 0,
-    "vitaminB6": 0,
-    "folate": 0,
-    "vitaminB12": 0,
-    "biotin": 0,
-    "pantothenicAcid": 0,
-    "cholesterol": 0,
-    "saturatedFat": 0,
-    "monounsaturatedFat": 0,
-    "polyunsaturatedFat": 0,
-    "transFat": 0,
-    "omega3": 0,
-    "omega6": 0,
-    "creatine": 0
+    "calories": <number>,
+    "protein": <number>, // grams
+    "carbs": <number>, // grams
+    "fat": <number>, // grams
+    "fiber": <number>, // grams
+    "sugar": <number>, // grams
+    "sodium": <number>, // milligrams
+    "potassium": <number>, // milligrams
+    "calcium": <number>, // milligrams
+    "magnesium": <number>, // milligrams
+    "phosphorus": <number>, // milligrams
+    "iron": <number>, // milligrams
+    "zinc": <number>, // milligrams
+    "selenium": <number>, // micrograms
+    "vitaminA": <number>, // IU or RAE (specify if possible, otherwise just number)
+    "vitaminC": <number>, // milligrams
+    "vitaminD": <number>, // IU
+    "vitaminE": <number>, // milligrams or IU
+    "vitaminK": <number>, // micrograms
+    "thiamin": <number>, // B1, milligrams
+    "riboflavin": <number>, // B2, milligrams
+    "niacin": <number>, // B3, milligrams
+    "vitaminB6": <number>, // milligrams
+    "folate": <number>, // DFE or micrograms (specify if possible, otherwise just number)
+    "vitaminB12": <number>, // micrograms
+    "biotin": <number>, // micrograms
+    "pantothenicAcid": <number>, // B5, milligrams
+    "cholesterol": <number>, // milligrams
+    "saturatedFat": <number>, // grams
+    "monounsaturatedFat": <number>, // grams
+    "polyunsaturatedFat": <number>, // grams
+    "transFat": <number>, // grams
+    "omega3": <number>, // milligrams or grams
+    "omega6": <number>, // milligrams or grams
+    "creatine": <number> // grams (often 0 for most foods)
   },
-  "confidence": 85,
-  "weightConversion": {
-    "grams": 150,
-    "ounces": 5.3,
-    "pounds": 0.33
+  "confidence": <number between 0.0 and 1.0 indicating confidence in the accuracy>,
+  "weightConversion": { // Optional: if applicable and known for common units
+    "grams": <number for 1 default serving in grams>,
+    "ounces": <number for 1 default serving in ounces>,
+    "pounds": <number for 1 default serving in pounds>
   }
 }
-
-Units reference:
-- Macronutrients: grams (g) except calories (kcal)
-- Vitamins: mcg (micrograms) except Vitamin C, E, K, Niacin (mg)
-- Minerals: mg (milligrams) except selenium (mcg)
-- Creatine: grams (g) - only include if the food naturally contains creatine (meat, fish)
-- Weight conversion: only include if unit is NOT already weight-based (g, kg, oz, lb)
-- Confidence: 0-100 percentage
-
-Be accurate with portion sizes and provide realistic nutritional values. If the food item is ambiguous, make reasonable assumptions and adjust confidence accordingly.
+Example for "1 large apple":
+{
+  "name": "1 large apple",
+  "normalizedName": "Apple, raw, fuji, large, with skin",
+  "quantity": 1,
+  "unit": "large",
+  "nutrition": {
+    "calories": 116, "protein": 0.5, "carbs": 30.7, "fat": 0.3, "fiber": 5.4, "sugar": 23.1, 
+    "sodium": 2, "potassium": 239, "calcium": 13, "magnesium": 11, "phosphorus": 25, "iron": 0.3, "zinc": 0.1, "selenium": 0.7,
+    "vitaminA": 121, "vitaminC": 10.3, "vitaminD": 0, "vitaminE": 0.4, "vitaminK": 4.9,
+    "thiamin": 0.038, "riboflavin": 0.058, "niacin": 0.203, "vitaminB6": 0.091, "folate": 7, "vitaminB12": 0,
+    "biotin": 0, "pantothenicAcid": 0.135, "cholesterol": 0, 
+    "saturatedFat": 0.1, "monounsaturatedFat": 0, "polyunsaturatedFat": 0.1, "transFat": 0,
+    "omega3": 0, "omega6": 0, "creatine": 0
+  },
+  "confidence": 0.9,
+  "weightConversion": { "grams": 223, "ounces": 7.8, "pounds": 0.49 }
+}
+Ensure all values are numbers. If a nutrient is not applicable or unknown, use 0.
 `;
 
-    let response: string = '';
-    let cleanedResponse: string = '';
-    
+    logger.info(`Requesting food lookup from OpenAI for: "${foodQuery}"`);
+    const messagesForOpenAI: ChatCompletionMessageParam[] = [ 
+      { role: 'system', content: 'You are a food nutrition database. Provide detailed nutritional information in JSON format.' },
+      { role: 'user', content: prompt }
+    ];
+    // Ensure this call matches the updated signature: (messages, maxTokens, temperature, model)
+    const resultString = await this.callOpenAI(messagesForOpenAI, 1500, 0.2, this.currentModel);
+
     try {
-      response = await this.callOpenAI(prompt, 1500);
-      
-      // Simple JSON extraction and cleaning
-      cleanedResponse = response.trim();
-      
-      // Remove markdown code blocks if present
-      if (cleanedResponse.includes('```json')) {
-        const jsonMatch = cleanedResponse.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      } else if (cleanedResponse.includes('```')) {
-        const jsonMatch = cleanedResponse.match(/```\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      }
-      
-      const parsed = JSON.parse(cleanedResponse);
-      
-      // Validate and ensure all required fields exist
-      const nutrition = {
-        calories: Number(parsed.nutrition?.calories) || 0,
-        protein: Number(parsed.nutrition?.protein) || 0,
-        carbs: Number(parsed.nutrition?.carbs) || 0,
-        fat: Number(parsed.nutrition?.fat) || 0,
-        fiber: Number(parsed.nutrition?.fiber) || 0,
-        sugar: Number(parsed.nutrition?.sugar) || 0,
-        sodium: Number(parsed.nutrition?.sodium) || 0,
-        potassium: Number(parsed.nutrition?.potassium) || 0,
-        calcium: Number(parsed.nutrition?.calcium) || 0,
-        magnesium: Number(parsed.nutrition?.magnesium) || 0,
-        phosphorus: Number(parsed.nutrition?.phosphorus) || 0,
-        iron: Number(parsed.nutrition?.iron) || 0,
-        zinc: Number(parsed.nutrition?.zinc) || 0,
-        selenium: Number(parsed.nutrition?.selenium) || 0,
-        vitaminA: Number(parsed.nutrition?.vitaminA) || 0,
-        vitaminC: Number(parsed.nutrition?.vitaminC) || 0,
-        vitaminD: Number(parsed.nutrition?.vitaminD) || 0,
-        vitaminE: Number(parsed.nutrition?.vitaminE) || 0,
-        vitaminK: Number(parsed.nutrition?.vitaminK) || 0,
-        thiamin: Number(parsed.nutrition?.thiamin) || 0,
-        riboflavin: Number(parsed.nutrition?.riboflavin) || 0,
-        niacin: Number(parsed.nutrition?.niacin) || 0,
-        vitaminB6: Number(parsed.nutrition?.vitaminB6) || 0,
-        folate: Number(parsed.nutrition?.folate) || 0,
-        vitaminB12: Number(parsed.nutrition?.vitaminB12) || 0,
-        biotin: Number(parsed.nutrition?.biotin) || 0,
-        pantothenicAcid: Number(parsed.nutrition?.pantothenicAcid) || 0,
-        cholesterol: Number(parsed.nutrition?.cholesterol) || 0,
-        saturatedFat: Number(parsed.nutrition?.saturatedFat) || 0,
-        monounsaturatedFat: Number(parsed.nutrition?.monounsaturatedFat) || 0,
-        polyunsaturatedFat: Number(parsed.nutrition?.polyunsaturatedFat) || 0,
-        transFat: Number(parsed.nutrition?.transFat) || 0,
-        omega3: Number(parsed.nutrition?.omega3) || 0,
-        omega6: Number(parsed.nutrition?.omega6) || 0,
-        creatine: Number(parsed.nutrition?.creatine) || 0,
-      };
-      
+      const parsedResult = JSON.parse(resultString);
       return {
-        name: parsed.name || foodQuery,
-        normalizedName: parsed.normalizedName || foodQuery,
-        quantity: Number(parsed.quantity) || quantity,
-        unit: parsed.unit || unit,
-        nutrition,
-        confidence: Math.min(Math.max(Number(parsed.confidence) || 80, 0), 100) / 100,
-        weightConversion: parsed.weightConversion || undefined
+        name: parsedResult.name || foodQuery,
+        normalizedName: parsedResult.normalizedName || foodQuery,
+        quantity: Number(parsedResult.quantity) || quantity,
+        unit: parsedResult.unit || unit,
+        nutrition: {
+          calories: Number(parsedResult.nutrition?.calories) || 0,
+          protein: Number(parsedResult.nutrition?.protein) || 0,
+          carbs: Number(parsedResult.nutrition?.carbs) || 0,
+          fat: Number(parsedResult.nutrition?.fat) || 0,
+          fiber: Number(parsedResult.nutrition?.fiber) || 0,
+          sugar: Number(parsedResult.nutrition?.sugar) || 0,
+          sodium: Number(parsedResult.nutrition?.sodium) || 0,
+          potassium: Number(parsedResult.nutrition?.potassium) || 0,
+          calcium: Number(parsedResult.nutrition?.calcium) || 0,
+          magnesium: Number(parsedResult.nutrition?.magnesium) || 0,
+          phosphorus: Number(parsedResult.nutrition?.phosphorus) || 0,
+          iron: Number(parsedResult.nutrition?.iron) || 0,
+          zinc: Number(parsedResult.nutrition?.zinc) || 0,
+          selenium: Number(parsedResult.nutrition?.selenium) || 0,
+          vitaminA: Number(parsedResult.nutrition?.vitaminA) || 0,
+          vitaminC: Number(parsedResult.nutrition?.vitaminC) || 0,
+          vitaminD: Number(parsedResult.nutrition?.vitaminD) || 0,
+          vitaminE: Number(parsedResult.nutrition?.vitaminE) || 0,
+          vitaminK: Number(parsedResult.nutrition?.vitaminK) || 0,
+          thiamin: Number(parsedResult.nutrition?.thiamin) || 0,
+          riboflavin: Number(parsedResult.nutrition?.riboflavin) || 0,
+          niacin: Number(parsedResult.nutrition?.niacin) || 0,
+          vitaminB6: Number(parsedResult.nutrition?.vitaminB6) || 0,
+          folate: Number(parsedResult.nutrition?.folate) || 0,
+          vitaminB12: Number(parsedResult.nutrition?.vitaminB12) || 0,
+          biotin: Number(parsedResult.nutrition?.biotin) || 0,
+          pantothenicAcid: Number(parsedResult.nutrition?.pantothenicAcid) || 0,
+          cholesterol: Number(parsedResult.nutrition?.cholesterol) || 0,
+          saturatedFat: Number(parsedResult.nutrition?.saturatedFat) || 0,
+          monounsaturatedFat: Number(parsedResult.nutrition?.monounsaturatedFat) || 0,
+          polyunsaturatedFat: Number(parsedResult.nutrition?.polyunsaturatedFat) || 0,
+          transFat: Number(parsedResult.nutrition?.transFat) || 0,
+          omega3: Number(parsedResult.nutrition?.omega3) || 0,
+          omega6: Number(parsedResult.nutrition?.omega6) || 0,
+          creatine: Number(parsedResult.nutrition?.creatine) || 0,
+        },
+        confidence: Math.min(Math.max(Number(parsedResult.confidence) || 0.8, 0), 1),
+        weightConversion: parsedResult.weightConversion || undefined
       };
     } catch (error) {
       logger.error('Failed to lookup food with AI:', error);
@@ -885,62 +695,47 @@ Be accurate with portion sizes and provide realistic nutritional values. If the 
       fat: number;
     };
   }[]> {
-    if (!query.trim()) {
-      return [];
-    }
-
-    const prompt = `
-You are a food database expert. Provide a list of the most relevant food items matching the search query "${query}".
-
-Return exactly 5-8 food suggestions in JSON format. Include common portion sizes and basic nutrition estimates.
-
-Return ONLY valid JSON in this format:
+    const prompt = `Search for food items matching "${query}". 
+For each item, provide a common name, category (e.g., Fruit, Vegetable, Meat, Dairy, Grain, Packaged Meal, Fast Food, Beverage), 
+a few common portions (e.g., 1 serving, 100g, 1 cup, 1 piece), and estimated nutrition for a standard serving (calories, protein, carbs, fat).
+Limit to 5-7 results.
+Return the response as a JSON array, where each element is an object with "name", "category", "commonPortions" (array of objects with "amount", "unit", "description"), and "estimatedNutrition" (object with "calories", "protein", "carbs", "fat").
+Example for "apple":
 [
   {
-    "name": "Food name",
-    "category": "Food category (e.g., 'Fruits', 'Vegetables', 'Proteins', 'Grains', 'Dairy', 'Snacks')",
+    "name": "Apple, raw",
+    "category": "Fruit",
     "commonPortions": [
-      {"amount": 1, "unit": "medium", "description": "1 medium apple"},
-      {"amount": 100, "unit": "g", "description": "100g raw"},
-      {"amount": 1, "unit": "cup", "description": "1 cup sliced"}
+      {"amount": 1, "unit": "medium", "description": "1 medium (approx 182g)"},
+      {"amount": 100, "unit": "g", "description": "100 grams"},
+      {"amount": 1, "unit": "cup", "description": "1 cup slices (approx 110g)"}
     ],
-    "estimatedNutrition": {
-      "calories": 52,
-      "protein": 0.3,
-      "carbs": 14,
-      "fat": 0.2
-    }
+    "estimatedNutrition": {"calories": 95, "protein": 0.5, "carbs": 25, "fat": 0.3}
+  },
+  {
+    "name": "Apple Juice, unsweetened",
+    "category": "Beverage",
+    "commonPortions": [
+      {"amount": 1, "unit": "cup", "description": "1 cup (240ml)"},
+      {"amount": 8, "unit": "fl oz", "description": "8 fluid ounces"}
+    ],
+    "estimatedNutrition": {"calories": 110, "protein": 0.2, "carbs": 28, "fat": 0.1}
   }
 ]
-
-Focus on:
-- Exact matches first, then similar foods
-- Include brand names if relevant
-- Provide realistic portion sizes
-- Estimate nutrition per 100g or common serving
+Do not include any text outside the JSON array.
 `;
 
-    let response: string = '';
-    
+    logger.info(`Requesting food search from OpenAI for: "${query}"`);
+    const messagesForOpenAI: ChatCompletionMessageParam[] = [ 
+      { role: 'system', content: 'You are a food search engine. Provide results in JSON format.' },
+      { role: 'user', content: prompt }
+    ];
+    // Ensure this call matches the updated signature: (messages, maxTokens, temperature, model)
+    const resultString = await this.callOpenAI(messagesForOpenAI, 1000, 0.2, this.currentModel);
+
     try {
-      response = await this.callOpenAI(prompt, 1000);
-      
-      let cleanedResponse = response.trim();
-      
-      if (cleanedResponse.includes('```json')) {
-        const jsonMatch = cleanedResponse.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      } else if (cleanedResponse.includes('```')) {
-        const jsonMatch = cleanedResponse.match(/```\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      }
-      
-      const parsed = JSON.parse(cleanedResponse);
-      return Array.isArray(parsed) ? parsed.slice(0, 8) : [];
+      const parsedResult = JSON.parse(resultString);
+      return Array.isArray(parsedResult) ? parsedResult.slice(0, 8) : [];
     } catch (error) {
       logger.error('Failed to search foods with AI:', error);
       return [];
@@ -954,110 +749,51 @@ Focus on:
     confidence: number;
     weightConversion?: any;
   }>> {
-    if (foodQueries.length === 0) {
-      return [];
-    }
+    const prompt = `For each food query in the following list, provide detailed nutritional information.
+Queries:
+${foodQueries.map(q => `- ${q}`).join('\n')}
 
-    const prompt = `
-You are a nutrition expert with comprehensive knowledge of food composition. Analyze the following list of food items and provide detailed nutritional information for each one.
-
-Food Items to Analyze:
-${foodQueries.map((query, index) => `${index + 1}. ${query}`).join('\n')}
-
-IMPORTANT: Return a JSON array with nutritional data for each food item in the EXACT same order as listed above.
-
-For each food item, provide:
-1. Standardized name
-2. Complete nutritional breakdown (same format as single food analysis)
-3. Confidence score (0-1)
-
-Return ONLY a valid JSON array like this:
-[
-  {
-    "name": "Grilled Chicken Breast",
-    "normalizedName": "grilled chicken breast",
+Return the response as a JSON array, where each element corresponds to a query and follows the structure:
+{
+  "name": "Original food query or most specific name found for this query",
+  "normalizedName": "Normalized name of the food item (e.g., 'Apple, raw, with skin')",
+  // IMPORTANT: Quantity and Unit should be derived from the original query string (e.g., "100g chicken" -> quantity:100, unit:"g")
+  // If not specified in the query, you can use a default (e.g., 1 serving) but state it clearly in 'name' or 'normalizedName'.
+  "quantity": <parsed or default quantity as number>, 
+  "unit": "<parsed or default unit as string>",
     "nutrition": {
-      "calories": 231,
-      "protein": 43.5,
-      "carbs": 0,
-      "fat": 5.0,
-      "fiber": 0,
-      "sugar": 0,
-      "sodium": 104,
-      "potassium": 421,
-      "calcium": 15,
-      "magnesium": 32,
-      "phosphorus": 229,
-      "iron": 1.04,
-      "zinc": 1.09,
-      "selenium": 30.6,
-      "vitaminA": 16,
-      "vitaminC": 2.4,
-      "vitaminD": 0.3,
-      "vitaminE": 0.27,
-      "vitaminK": 2.4,
-      "thiamin": 0.087,
-      "riboflavin": 0.166,
-      "niacin": 14.772,
-      "vitaminB6": 0.862,
-      "folate": 4,
-      "vitaminB12": 0.34,
-      "biotin": 10.4,
-      "pantothenicAcid": 1.329,
-      "cholesterol": 104,
-      "saturatedFat": 1.35,
-      "monounsaturatedFat": 1.84,
-      "polyunsaturatedFat": 1.08,
-      "transFat": 0.04,
-      "omega3": 0.08,
-      "omega6": 0.85,
-      "creatine": 0.4
-    },
-    "confidence": 0.95,
-    "weightConversion": {
-      "grams": 172,
-      "ounces": 6.07,
-      "pounds": 0.38
-    }
-  }
-]
+    "calories": <number>, "protein": <number>, "carbs": <number>, "fat": <number>, "fiber": <number>, "sugar": <number>, 
+    "sodium": <number>, "potassium": <number>, "calcium": <number>, "magnesium": <number>, "phosphorus": <number>, "iron": <number>, "zinc": <number>, "selenium": <number>,
+    "vitaminA": <number>, "vitaminC": <number>, "vitaminD": <number>, "vitaminE": <number>, "vitaminK": <number>,
+    "thiamin": <number>, "riboflavin": <number>, "niacin": <number>, "vitaminB6": <number>, "folate": <number>, "vitaminB12": <number>,
+    "biotin": <number>, "pantothenicAcid": <number>, "cholesterol": <number>, 
+    "saturatedFat": <number>, "monounsaturatedFat": <number>, "polyunsaturatedFat": <number>, "transFat": <number>,
+    "omega3": <number>, "omega6": <number>, "creatine": <number>
+  },
+  "confidence": <number between 0.0 and 1.0>,
+  "weightConversion": { "grams": <number>, "ounces": <number>, "pounds": <number> } // Optional
+}
+Ensure all nutrient values are numbers. If unknown, use 0.
+Do not include any text outside the main JSON array. Each query must have a corresponding object in the array, even if confidence is low or it's an error state (in which case nutrition can be zeros).
+The order of results in the array MUST match the order of the input foodQueries.
+Example for ["1 apple", "100g banana"]:
+[
+  { "name": "1 apple", "normalizedName": "Apple, raw, medium", "quantity": 1, "unit": "medium", "nutrition": { "calories": 95, /* ... */ }, "confidence": 0.9, /* ... */ },
+  { "name": "100g banana", "normalizedName": "Banana, raw, 100g", "quantity": 100, "unit": "g", "nutrition": { "calories": 89, /* ... */ }, "confidence": 0.95, /* ... */ }
+]`;
 
-Ensure the array has exactly ${foodQueries.length} items in the same order as the input list.
-    `;
+    logger.info('Requesting bulk food lookup from OpenAI.');
+    const messagesForOpenAI: ChatCompletionMessageParam[] = [
+      { role: 'system', content: 'You are a food nutrition database. Provide detailed nutritional information in JSON array format.' },
+      { role: 'user', content: prompt }
+    ];
+    const resultString = await this.callOpenAI(messagesForOpenAI, 3500, 0.2, this.currentModel);
 
     try {
-      const response = await this.callOpenAI(prompt, 3000);
-      
-      let cleanedResponse = response.trim();
-      
-      // Remove markdown code blocks if present
-      if (cleanedResponse.includes('```json')) {
-        const jsonMatch = cleanedResponse.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      } else if (cleanedResponse.includes('```')) {
-        const jsonMatch = cleanedResponse.match(/```\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      }
-
-      const parsed = JSON.parse(cleanedResponse);
-      
-      if (!Array.isArray(parsed)) {
-        throw new Error('Expected array response');
-      }
-
-      // Ensure we have the right number of results
-      if (parsed.length !== foodQueries.length) {
-        throw new Error(`Expected ${foodQueries.length} results, got ${parsed.length}`);
-      }
-
-      // Validate and normalize each result
-      return parsed.map((item, index) => ({
-        name: item.name || foodQueries[index],
-        normalizedName: item.normalizedName || foodQueries[index].toLowerCase(),
+      const parsedResults = JSON.parse(resultString);
+      return parsedResults.map((item: any) => ({
+        name: item.name || foodQueries[parsedResults.indexOf(item)],
+        normalizedName: item.normalizedName || foodQueries[parsedResults.indexOf(item)].toLowerCase(),
         nutrition: {
           calories: Number(item.nutrition?.calories) || 0,
           protein: Number(item.nutrition?.protein) || 0,
@@ -1098,7 +834,6 @@ Ensure the array has exactly ${foodQueries.length} items in the same order as th
         confidence: Math.min(Math.max(Number(item.confidence) || 0.8, 0), 1),
         weightConversion: item.weightConversion || undefined
       }));
-
     } catch (error) {
       logger.error('Bulk food lookup failed:', error);
       
@@ -1134,122 +869,85 @@ Ensure the array has exactly ${foodQueries.length} items in the same order as th
     notes?: string;
     confidence: number;
   }> {
-    const prompt = `
-You are a supplement and medication expert. Analyze the following supplement query and provide detailed information.
-
-Query: "${query}"
-
-Extract or estimate the following information:
-1. Supplement name (standardized)
-2. Brand (if mentioned)
-3. Dosage amount and unit
-4. Form (capsule, tablet, liquid, powder, gummy, injection, patch, other)
-5. Active ingredients list
-6. Nutritional/supplement content (vitamins, minerals, compounds)
-7. Instructions (if any - "take with food", etc.)
-8. Notes: Include helpful information about primary uses, benefits, potential side effects, and other important details
-9. Confidence in analysis (0-1)
-
-Return ONLY valid JSON in this exact format:
+    const prompt = `Analyze the supplement query: "${query}".
+Identify the supplement name, brand (if specified), dosage, unit, form (e.g., tablet, powder, liquid), and key active ingredients.
+Return the response as a JSON object with the following structure:
+{
+  "name": "Supplement Name",
+  "brand": "Brand Name (optional)",
+  "dosage": <number (e.g., 500)>,
+  "unit": "<string (e.g., mg, IU, mcg)>",
+  "form": "<string (e.g., tablet, capsule, powder)>",
+  "activeIngredients": ["Ingredient1", "Ingredient2"],
+  "content": {}, // Placeholder for potential future full label parsing
+  "instructions": "Suggested usage instructions if inferable or commonly known (optional)",
+  "notes": "Any other relevant notes or observations (optional)",
+  "confidence": <number between 0.0 and 1.0 for the overall parsing accuracy>
+}
+Example for "Vitamin D3 5000 IU softgel by Now":
 {
   "name": "Vitamin D3",
-  "brand": "Nature Made",
-  "dosage": 2000,
+  "brand": "Now",
+  "dosage": 5000,
   "unit": "IU",
-  "form": "capsule",
-  "activeIngredients": ["Cholecalciferol"],
-  "content": {
-    "vitaminD": 2000,
-    "calcium": 0,
-    "magnesium": 0,
-    "vitaminK": 0,
-    "omega3": 0,
-    "probioticCFU": 0,
-    "coq10": 0,
-    "creatine": 0
-  },
-  "instructions": "Take with food for better absorption",
-  "notes": "Supports bone health, immune function, and muscle strength. Helps with calcium absorption. May improve mood and reduce inflammation. Best taken with fatty foods. Deficiency is common, especially in winter months.",
+  "form": "softgel",
+  "activeIngredients": ["Cholecalciferol (Vitamin D3)"],
+  "content": {},
+  "instructions": "Take one softgel daily with a meal, or as directed by your healthcare practitioner.",
+  "notes": "Commonly used for bone health and immune support.",
   "confidence": 0.9
 }
+Do not include any text outside the JSON object.`;
 
-For content values:
-- Use 0 for nutrients not present in the supplement
-- Include values in standard units (mg, mcg, IU as appropriate)
-- Common supplement compounds: vitaminA, vitaminC, vitaminD, vitaminE, vitaminK, thiamin, riboflavin, niacin, vitaminB6, folate, vitaminB12, biotin, pantothenicAcid, calcium, magnesium, iron, zinc, selenium, potassium, phosphorus, sodium, omega3, omega6, creatine, coq10, probioticCFU
-
-For notes, include:
-- Primary uses and health benefits
-- Common dosage recommendations
-- Best time to take or absorption tips
-- Potential interactions or contraindications
-- Who might benefit most from this supplement
-
-If the query is unclear or insufficient, make reasonable assumptions but lower the confidence score.
-    `;
+    logger.info(`Requesting supplement query analysis from OpenAI for: "${query}"`);
+    const messagesForOpenAI: ChatCompletionMessageParam[] = [
+      { role: 'system', content: 'You are a supplement information parser. Provide details in JSON format.' },
+      { role: 'user', content: prompt }
+    ];
+    const resultString = await this.callOpenAI(messagesForOpenAI, 1000, 0.2, this.currentModel);
 
     try {
-      const response = await this.callOpenAI(prompt, 1000);
-      
-      let cleanedResponse = response.trim();
-      
-      // Remove markdown code blocks if present
-      if (cleanedResponse.includes('```json')) {
-        const jsonMatch = cleanedResponse.match(/```json\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      } else if (cleanedResponse.includes('```')) {
-        const jsonMatch = cleanedResponse.match(/```\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-          cleanedResponse = jsonMatch[1].trim();
-        }
-      }
-
-      const parsed = JSON.parse(cleanedResponse);
-      
-      // Validate and normalize the response
+      const parsedResult = JSON.parse(resultString);
       return {
-        name: parsed.name || query,
-        brand: parsed.brand || undefined,
-        dosage: Number(parsed.dosage) || 1,
-        unit: parsed.unit || 'capsule',
-        form: parsed.form || 'capsule',
-        activeIngredients: Array.isArray(parsed.activeIngredients) ? parsed.activeIngredients : [],
+        name: parsedResult.name || query,
+        brand: parsedResult.brand || undefined,
+        dosage: Number(parsedResult.dosage) || 1,
+        unit: parsedResult.unit || 'capsule',
+        form: parsedResult.form || 'capsule',
+        activeIngredients: Array.isArray(parsedResult.activeIngredients) ? parsedResult.activeIngredients : [],
         content: {
-          vitaminA: Number(parsed.content?.vitaminA) || 0,
-          vitaminC: Number(parsed.content?.vitaminC) || 0,
-          vitaminD: Number(parsed.content?.vitaminD) || 0,
-          vitaminE: Number(parsed.content?.vitaminE) || 0,
-          vitaminK: Number(parsed.content?.vitaminK) || 0,
-          thiamin: Number(parsed.content?.thiamin) || 0,
-          riboflavin: Number(parsed.content?.riboflavin) || 0,
-          niacin: Number(parsed.content?.niacin) || 0,
-          vitaminB6: Number(parsed.content?.vitaminB6) || 0,
-          folate: Number(parsed.content?.folate) || 0,
-          vitaminB12: Number(parsed.content?.vitaminB12) || 0,
-          biotin: Number(parsed.content?.biotin) || 0,
-          pantothenicAcid: Number(parsed.content?.pantothenicAcid) || 0,
-          calcium: Number(parsed.content?.calcium) || 0,
-          magnesium: Number(parsed.content?.magnesium) || 0,
-          iron: Number(parsed.content?.iron) || 0,
-          zinc: Number(parsed.content?.zinc) || 0,
-          selenium: Number(parsed.content?.selenium) || 0,
-          potassium: Number(parsed.content?.potassium) || 0,
-          phosphorus: Number(parsed.content?.phosphorus) || 0,
-          sodium: Number(parsed.content?.sodium) || 0,
-          omega3: Number(parsed.content?.omega3) || 0,
-          omega6: Number(parsed.content?.omega6) || 0,
-          creatine: Number(parsed.content?.creatine) || 0,
-          coq10: Number(parsed.content?.coq10) || 0,
-          probioticCFU: Number(parsed.content?.probioticCFU) || 0,
-          confidence: Math.min(Math.max(Number(parsed.content?.confidence) || 0.8, 0), 1)
+          vitaminA: Number(parsedResult.content?.vitaminA) || 0,
+          vitaminC: Number(parsedResult.content?.vitaminC) || 0,
+          vitaminD: Number(parsedResult.content?.vitaminD) || 0,
+          vitaminE: Number(parsedResult.content?.vitaminE) || 0,
+          vitaminK: Number(parsedResult.content?.vitaminK) || 0,
+          thiamin: Number(parsedResult.content?.thiamin) || 0,
+          riboflavin: Number(parsedResult.content?.riboflavin) || 0,
+          niacin: Number(parsedResult.content?.niacin) || 0,
+          vitaminB6: Number(parsedResult.content?.vitaminB6) || 0,
+          folate: Number(parsedResult.content?.folate) || 0,
+          vitaminB12: Number(parsedResult.content?.vitaminB12) || 0,
+          biotin: Number(parsedResult.content?.biotin) || 0,
+          pantothenicAcid: Number(parsedResult.content?.pantothenicAcid) || 0,
+          calcium: Number(parsedResult.content?.calcium) || 0,
+          magnesium: Number(parsedResult.content?.magnesium) || 0,
+          iron: Number(parsedResult.content?.iron) || 0,
+          zinc: Number(parsedResult.content?.zinc) || 0,
+          selenium: Number(parsedResult.content?.selenium) || 0,
+          potassium: Number(parsedResult.content?.potassium) || 0,
+          phosphorus: Number(parsedResult.content?.phosphorus) || 0,
+          sodium: Number(parsedResult.content?.sodium) || 0,
+          omega3: Number(parsedResult.content?.omega3) || 0,
+          omega6: Number(parsedResult.content?.omega6) || 0,
+          creatine: Number(parsedResult.content?.creatine) || 0,
+          coq10: Number(parsedResult.content?.coq10) || 0,
+          probioticCFU: Number(parsedResult.content?.probioticCFU) || 0,
+          confidence: Math.min(Math.max(Number(parsedResult.content?.confidence) || 0.8, 0), 1)
         },
-        instructions: parsed.instructions || undefined,
-        notes: parsed.notes || undefined,
-        confidence: Math.min(Math.max(Number(parsed.confidence) || 0.8, 0), 1)
+        instructions: parsedResult.instructions || undefined,
+        notes: parsedResult.notes || undefined,
+        confidence: Math.min(Math.max(Number(parsedResult.confidence) || 0.8, 0), 1)
       };
-
     } catch (error) {
       logger.error('Supplement analysis failed:', error);
       
@@ -1270,6 +968,106 @@ If the query is unclear or insufficient, make reasonable assumptions but lower t
         },
         confidence: 0.1
       };
+    }
+  }
+
+  // Method to get a second opinion analysis using Gemini or OpenAI
+  async getSecondOpinionAnalysis(
+    nutritionData: any, 
+    originalAnalysis: { insights: string[]; recommendations: string[]; summary?: string; llmModel?: string; },
+    requestedSecondOpinionModel: string
+  ): Promise<{ secondOpinionText: string; llmModel: string; }> {
+    try {
+      logger.info(`Requesting second opinion analysis using ${requestedSecondOpinionModel}.`);
+      
+      let independentAnalysisText: string;
+      let actualModelUsed = requestedSecondOpinionModel;
+
+      // STEP 1: Generate an independent analysis from the requested second opinion model
+      const independentAnalysisPrompt = `
+        You are an AI nutritionist. Based on the following nutritional data, provide your own detailed analysis.
+        Focus on insights, potential deficiencies/excesses, alignment with goals, and actionable recommendations.
+        Output your analysis as comprehensive raw text. Do not use JSON.
+
+        User Profile: ${JSON.stringify(nutritionData.userProfile, null, 2)}
+        Food Logs Summary (Actual Days: ${nutritionData.actualDays}, Requested: ${nutritionData.requestedDays}):
+        Total Calories: ${nutritionData.totalCalories}, Protein: ${nutritionData.totalProtein}g, Carbs: ${nutritionData.totalCarbs}g, Fat: ${nutritionData.totalFat}g
+        Full Food Log Details (sample):
+        ${nutritionData.foodLogs?.slice(0, 3).map((log: { date: string | number | Date; mealType: any; foods: any[]; totalCalories: any; }) => `
+          Date: ${new Date(log.date).toLocaleDateString()}
+          Meal: ${log.mealType || 'N/A'}
+          Foods: ${log.foods?.map((food: { name: any; quantity: any; unit: any; calories: any; }) => `${food.name} (${food.quantity} ${food.unit}) - ${food.calories} kcal`).join(', ') || 'N/A'}
+          Total Meal Calories: ${log.totalCalories || 'N/A'}
+        `).join('\n') || 'No food logs sample available.'}
+        Supplement Regimens:
+        ${nutritionData.supplementRegimens?.map((reg: { name: any; dosage: any; unit: any; frequency: any; }) => `${reg.name} - ${reg.dosage} ${reg.unit}, ${reg.frequency}`).join('\n') || 'None'}
+        Supplement Intakes (Recent):
+        ${nutritionData.supplementIntakes?.map((intake: { supplementName: any; dosage: any; unit: any; dateTaken: string | number | Date; }) => `${intake.supplementName} - ${intake.dosage} ${intake.unit} on ${new Date(intake.dateTaken).toLocaleDateString()}`).join('\n') || 'None'}
+      `;
+
+      if (requestedSecondOpinionModel.startsWith('gemini')) {
+        actualModelUsed = requestedSecondOpinionModel; // Use the specific gemini model (e.g., gemini-1.5-flash-latest)
+        independentAnalysisText = await this.callGemini(independentAnalysisPrompt, 2000);
+      } else { // Assume OpenAI model
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'system', content: 'You are an AI nutritionist providing an independent detailed analysis. Respond in raw text, not JSON.' },
+          { role: 'user', content: independentAnalysisPrompt }
+        ];
+        independentAnalysisText = await this.callOpenAI(messages, 2000, 0.5, requestedSecondOpinionModel);
+        actualModelUsed = requestedSecondOpinionModel;
+      }
+      logger.info(`Independent analysis generated by ${actualModelUsed}. Length: ${independentAnalysisText.length}`);
+
+      // STEP 2: Perform comparative analysis
+      const comparisonPrompt = `
+        You are an expert medical/nutritional analyst. You have been provided with an Original Nutritional Analysis (from ${originalAnalysis.llmModel || 'an AI'}) and a Second Independent Analysis (from ${actualModelUsed}) for the same underlying patient data.
+
+        Your task is to write a "Second Opinion Report". This report should:
+        1.  Start with an overall statement summarizing the degree of agreement or disagreement (e.g., "${actualModelUsed} largely concurs with the original analysis by ${originalAnalysis.llmModel || 'the initial AI'}, but offers additional perspectives on X and Y." or "${actualModelUsed} presents some notable differences from the original analysis by ${originalAnalysis.llmModel || 'the initial AI'}, particularly regarding Z.").
+        2.  Briefly summarize the key findings/conclusions of the Original Analysis.
+        3.  Briefly summarize the key findings/conclusions of the Second Independent Analysis you (or your counterpart model ${actualModelUsed}) just performed.
+        4.  Critically compare them, highlighting:
+            - Key areas of agreement in insights and recommendations.
+            - Significant points of disagreement or differing emphasis in insights and recommendations.
+            - Any unique insights or recommendations offered by one analysis but not the other.
+        5.  Conclude with a short summary of the value added by this second opinion.
+
+        Be objective and clear. Output the report as raw text.
+
+        CONTEXTUAL DATA (DO NOT RE-ANALYZE THIS DATA, IT'S FOR REFERENCE ONLY):
+        User Profile: Age ${nutritionData.userProfile?.age || 'N/A'}, Gender: ${nutritionData.userProfile?.gender || 'N/A'}, Goals: ${nutritionData.userProfile?.healthGoals?.join(', ') || 'N/A'}
+        Data Period: ${nutritionData.actualDays} days of logs.
+
+        ORIGINAL ANALYSIS (from ${originalAnalysis.llmModel || 'an AI'}):
+        Summary: ${originalAnalysis.summary || 'Not provided.'}
+        Insights: 
+        ${originalAnalysis.insights?.map(insight => `- ${insight}`).join('\n') || 'No insights provided.'}
+        Recommendations: 
+        ${originalAnalysis.recommendations?.map(rec => `- ${rec}`).join('\n') || 'No recommendations provided.'}
+
+        SECOND INDEPENDENT ANALYSIS (from ${actualModelUsed}):
+        ${independentAnalysisText}
+      `;
+      
+      let finalComparativeText: string;
+      if (requestedSecondOpinionModel.startsWith('gemini')) {
+        finalComparativeText = await this.callGemini(comparisonPrompt, 2500);
+      } else { // Assume OpenAI model
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'system', content: 'You are an expert analyst comparing two nutritional reports and providing a final second opinion report. Respond in raw text, not JSON.' },
+          { role: 'user', content: comparisonPrompt }
+        ];
+        finalComparativeText = await this.callOpenAI(messages, 2500, 0.5, requestedSecondOpinionModel);
+      }
+      logger.info(`Comparative analysis generated by ${actualModelUsed}. Length: ${finalComparativeText.length}`);
+      
+      return {
+        secondOpinionText: finalComparativeText,
+        llmModel: actualModelUsed, 
+      };
+    } catch (error: any) {
+      logger.error(`Error getting second opinion analysis with ${requestedSecondOpinionModel}:`, { message: error.message });
+      throw new Error(`Failed to get second opinion analysis with ${requestedSecondOpinionModel}: ${error.message}`);
     }
   }
 }

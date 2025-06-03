@@ -103,11 +103,14 @@ export interface Analysis {
   type: 'nutrition' | 'bloodwork' | 'correlation';
   date: Date;
   data: any;
+  inputData?: any;
   insights: string[];
   recommendations: string[];
   summary?: string;
   detailedAnalysis?: string;
   llmModel?: string;
+  secondOpinionText?: string;
+  secondOpinionLlmModel?: string;
   createdAt: Date;
   updatedAt: Date;
 }
