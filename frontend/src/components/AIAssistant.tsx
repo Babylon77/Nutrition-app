@@ -160,8 +160,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ size = 'medium' }) => {
   const handleInputFocus = () => {
     if (isMobile) {
       setTimeout(() => {
-        inputContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 150);
+        inputContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 300);
     }
   };
 
